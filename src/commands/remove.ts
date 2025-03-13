@@ -5,6 +5,7 @@ import { Command, CommandOptions } from '../types/index.js';
 import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
+import listCommand from './list.js';
 
 /**
  * Format a date string to display only the date (DD/MM/YYYY)
@@ -57,7 +58,7 @@ function groupEntriesByDate(entries: LogEntry[]): Record<string, LogEntry[]> {
 // Define a type for the entry selection choices
 type EntryChoice = {
   name: string;
-  value: number | 'all';
+  value: number | 'all' | 'cancel';
 };
 
 /**
@@ -115,18 +116,33 @@ const removeCommand: Command = {
           return await handleDateSelection(lastDate, groupedEntries, entries);
         }
 
+        // Create choices for date selection
+        const dateChoices = dates.map((date) => ({
+          name: `${formatDate(date)} (${groupedEntries[date].length} entries)`,
+          value: date,
+        }));
+
+        // Add a cancel option
+        dateChoices.push({
+          name: chalk.blue('Cancel (exit without removing)'),
+          value: 'cancel',
+        });
+
         // Otherwise, show date selection
         const { selectedDate } = await inquirer.prompt([
           {
             type: 'list',
             name: 'selectedDate',
             message: 'Select a date to remove entries from:',
-            choices: dates.map((date) => ({
-              name: `${formatDate(date)} (${groupedEntries[date].length} entries)`,
-              value: date,
-            })),
+            choices: dateChoices,
           },
         ]);
+
+        // Handle cancel option
+        if (selectedDate === 'cancel') {
+          logger.info('Operation cancelled.');
+          return;
+        }
 
         return await handleDateSelection(selectedDate, groupedEntries, entries);
       }
@@ -163,9 +179,15 @@ async function handleDateSelection(
   }));
 
   // Add an "All" option to delete all entries for the day
-  choices.push({
+  choices.unshift({
     name: chalk.red('All entries for this day'),
     value: 'all',
+  });
+
+  // Add a "Cancel" option to exit the command
+  choices.push({
+    name: chalk.blue('Cancel (exit without removing)'),
+    value: 'cancel',
   });
 
   // Prompt for entry selection
@@ -177,6 +199,12 @@ async function handleDateSelection(
       choices,
     },
   ]);
+
+  // Handle "Cancel" option
+  if (selectedEntry === 'cancel') {
+    logger.info('Operation cancelled.');
+    return;
+  }
 
   // Handle "All" option
   if (selectedEntry === 'all') {
@@ -193,6 +221,9 @@ async function handleDateSelection(
         selectedDate
       )}`
     );
+
+    // Show the list of entries after removal
+    await listCommand.execute([], {});
     return;
   }
 
@@ -208,6 +239,9 @@ async function handleDateSelection(
       `[${formatTime(entryToRemove.timestamp)}]`
     )} ${entryToRemove.content}`
   );
+
+  // Show the list of entries after removal
+  await listCommand.execute([], {});
 }
 
 /**
@@ -249,6 +283,9 @@ async function removeLastEntry(entries: LogEntry[]): Promise<void> {
       `[${formatTime(lastEntry.timestamp)}]`
     )} ${lastEntry.content}`
   );
+
+  // Show the list of entries after removal
+  await listCommand.execute([], {});
 }
 
 export default removeCommand;

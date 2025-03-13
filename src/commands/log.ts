@@ -3,6 +3,7 @@ import { Command, CommandOptions } from '../types/index.js';
 import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
+import listCommand from './list.js';
 
 /**
  * Add a log entry to the storage file
@@ -29,6 +30,9 @@ async function addLogEntry(content: string, customDate?: string): Promise<void> 
     await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
     logger.info('Entry logged successfully.');
+
+    // Show the list of entries after adding a new entry
+    await listCommand.execute([], {});
   } catch (error) {
     logger.error(
       `Failed to add log entry: ${error instanceof Error ? error.message : String(error)}`
