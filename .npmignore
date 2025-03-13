@@ -1,0 +1,39 @@
+# Source code
+src/
+
+# Tests
+tests/
+coverage/
+*.test.ts
+vitest.config.ts
+
+# Development configs
+.eslintrc.json
+.prettierrc
+tsconfig.json
+.gitignore
+.github/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Documentation files
+docs/
+CONTRIBUTING.md
+PROJECT_STRUCTURE.md
+
+# Git files
+.git/
+.gitignore 
