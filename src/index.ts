@@ -73,7 +73,7 @@ async function init(): Promise<void> {
     // Add help information
     program.addHelpText(
       'after',
-      '\nExamples:\n  $ lg setup\n  $ lg "Had a great day today!"\n  $ lg log "Learned something new"'
+      '\nExamples:\n  $ lg setup\n  $ lg "Had a great day today!"\n  $ lg log "Learned something new"\n  $ lg - Show all entries'
     );
 
     // Parse command line arguments
