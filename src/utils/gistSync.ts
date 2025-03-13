@@ -5,7 +5,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import axios from 'axios';
 import { logger } from './logger.js';
 import { Storage } from '../types/log.js';
 
@@ -88,9 +87,15 @@ export async function isGistSyncConfigured(): Promise<boolean> {
  */
 export async function createGist(token: string, entries: Storage): Promise<string> {
   try {
-    const response = await axios.post<GistResponse>(
-      'https://api.github.com/gists',
-      {
+    const response = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         description: 'Life Logger CLI Storage',
         public: false,
         files: {
@@ -98,28 +103,21 @@ export async function createGist(token: string, entries: Storage): Promise<strin
             content: JSON.stringify(entries, null, 2),
           },
         },
-      },
-      {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      }
-    );
+      }),
+    });
 
-    logger.debug(`Created gist with ID: ${response.data.id}`);
-    return response.data.id;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      logger.error(
-        `Failed to create gist: ${error.response.status} - ${JSON.stringify(error.response.data)}`
-      );
-    } else {
-      logger.error(
-        `Failed to create gist: ${error instanceof Error ? error.message : String(error)}`
-      );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`GitHub API error: ${response.status} - ${JSON.stringify(errorData)}`);
     }
+
+    const data = (await response.json()) as GistResponse;
+    logger.debug(`Created gist with ID: ${data.id}`);
+    return data.id;
+  } catch (error) {
+    logger.error(
+      `Failed to create gist: ${error instanceof Error ? error.message : String(error)}`
+    );
     throw error;
   }
 }
@@ -129,36 +127,34 @@ export async function createGist(token: string, entries: Storage): Promise<strin
  */
 export async function updateGist(token: string, gistId: string, entries: Storage): Promise<void> {
   try {
-    await axios.patch(
-      `https://api.github.com/gists/${gistId}`,
-      {
+    const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         description: 'Life Logger CLI Storage',
         files: {
           [GIST_FILENAME]: {
             content: JSON.stringify(entries, null, 2),
           },
         },
-      },
-      {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      }
-    );
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`GitHub API error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
 
     logger.debug(`Updated gist with ID: ${gistId}`);
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      logger.error(
-        `Failed to update gist: ${error.response.status} - ${JSON.stringify(error.response.data)}`
-      );
-    } else {
-      logger.error(
-        `Failed to update gist: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    logger.error(
+      `Failed to update gist: ${error instanceof Error ? error.message : String(error)}`
+    );
     throw error;
   }
 }
@@ -168,7 +164,8 @@ export async function updateGist(token: string, gistId: string, entries: Storage
  */
 export async function fetchGistEntries(token: string, gistId: string): Promise<Storage | null> {
   try {
-    const response = await axios.get<GistResponse>(`https://api.github.com/gists/${gistId}`, {
+    const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'GET',
       headers: {
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,
@@ -176,7 +173,14 @@ export async function fetchGistEntries(token: string, gistId: string): Promise<S
       },
     });
 
-    const gistContent = response.data.files[GIST_FILENAME]?.content;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`GitHub API error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+
+    const data = (await response.json()) as GistResponse;
+    const gistContent = data.files[GIST_FILENAME]?.content;
+
     if (!gistContent) {
       logger.error(`Gist does not contain ${GIST_FILENAME}`);
       return null;
@@ -185,15 +189,7 @@ export async function fetchGistEntries(token: string, gistId: string): Promise<S
     logger.debug(`Fetched entries from gist with ID: ${gistId}`);
     return JSON.parse(gistContent) as Storage;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      logger.error(
-        `Failed to fetch gist: ${error.response.status} - ${JSON.stringify(error.response.data)}`
-      );
-    } else {
-      logger.error(
-        `Failed to fetch gist: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    logger.error(`Failed to fetch gist: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
