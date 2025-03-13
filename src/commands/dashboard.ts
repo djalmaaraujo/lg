@@ -362,8 +362,7 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content:
-          'Press n/p to switch panels, Enter to focus input, Esc to blur, Ctrl+S to save entry',
+        content: 'Press e to switch to entries, i for input, Esc to exit, Ctrl+S to save entry',
         top: 3,
         left: 0,
       });
@@ -375,7 +374,7 @@ const dashboardCommand: Command = {
         left: 0,
         width: '100%',
         height: 3,
-        content: '{center}Press q to quit, n/p to switch panels, arrow keys to scroll{/center}',
+        content: '{center}Press q to quit, e/i to switch panels, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -389,13 +388,12 @@ const dashboardCommand: Command = {
         },
       });
 
-      // Define the focus order
-      const focusOrder = [entriesBox, tagsBox, quickEntryInput];
-      let focusIndex = 0;
+      // Simplify to just two panels for navigation
+      const ENTRIES_PANEL = 0;
+      const INPUT_PANEL = 1;
+      let activePanel = ENTRIES_PANEL;
 
-      // Remove all the focus overlay boxes
-
-      // Function to update focus based on current index
+      // Function to update focus based on active panel
       const updateFocus = () => {
         // Reset all labels to default
         entriesBox.setLabel(' Recent Entries ');
@@ -403,13 +401,10 @@ const dashboardCommand: Command = {
         quickEntryBox.setLabel(' Quick Entry ');
 
         // Set the focused element's label to indicate focus
-        if (focusIndex === 0) {
+        if (activePanel === ENTRIES_PANEL) {
           entriesBox.setLabel('{green-fg}[FOCUSED] Recent Entries{/green-fg}');
           entriesBox.focus();
-        } else if (focusIndex === 1) {
-          tagsBox.setLabel('{green-fg}[FOCUSED] Tags{/green-fg}');
-          tagsBox.focus();
-        } else if (focusIndex === 2) {
+        } else if (activePanel === INPUT_PANEL) {
           quickEntryBox.setLabel('{green-fg}[FOCUSED] Quick Entry{/green-fg}');
           quickEntryInput.focus();
         }
@@ -417,24 +412,24 @@ const dashboardCommand: Command = {
         screen.render();
       };
 
-      // Replace tab with 'n' for next panel
-      screen.key('n', () => {
-        focusIndex = (focusIndex + 1) % focusOrder.length;
+      // Direct key for entries panel
+      screen.key('e', () => {
+        activePanel = ENTRIES_PANEL;
         updateFocus();
       });
 
-      // Replace shift+tab with 'p' for previous panel
-      screen.key('p', () => {
-        focusIndex = (focusIndex - 1 + focusOrder.length) % focusOrder.length;
+      // Direct key for input panel
+      screen.key('i', () => {
+        activePanel = INPUT_PANEL;
         updateFocus();
       });
 
       // Handle escape and q to exit
       screen.key(['escape', 'q', 'C-c'], (_, key) => {
         // If input is focused, blur it first on Escape
-        if (focusIndex === 2 && key.name === 'escape') {
+        if (activePanel === INPUT_PANEL && key.name === 'escape') {
           // Switch focus to entries box
-          focusIndex = 0;
+          activePanel = ENTRIES_PANEL;
           updateFocus();
           return;
         }
@@ -447,15 +442,15 @@ const dashboardCommand: Command = {
 
       // Focus on input when Enter is pressed (only if not already on input)
       screen.key('enter', () => {
-        if (focusIndex !== 2) {
-          focusIndex = 2;
+        if (activePanel !== INPUT_PANEL) {
+          activePanel = INPUT_PANEL;
           updateFocus();
         }
       });
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        if (focusIndex === 2) {
+        if (activePanel === INPUT_PANEL) {
           const content = quickEntryInput.getValue();
           if (content.trim()) {
             try {
@@ -542,7 +537,7 @@ const dashboardCommand: Command = {
       });
 
       // Initial focus on entries box
-      focusIndex = 0;
+      activePanel = ENTRIES_PANEL;
       updateFocus();
     } catch (error) {
       logger.error(
