@@ -55,27 +55,6 @@ function extractTags(entries: LogEntry[]): Record<string, number> {
 }
 
 /**
- * Calculate statistics from entries
- * @param entries Array of log entries
- * @returns Object with statistics
- */
-function calculateStats(entries: LogEntry[]): Record<string, string | number> {
-  const grouped = groupEntriesByDate(entries);
-  const dates = Object.keys(grouped);
-
-  return {
-    totalEntries: entries.length,
-    daysLogged: dates.length,
-    entriesPerDay: dates.length > 0 ? (entries.length / dates.length).toFixed(1) : '0',
-    firstEntry: entries.length > 0 ? new Date(entries[0].timestamp).toLocaleDateString() : 'None',
-    lastEntry:
-      entries.length > 0
-        ? new Date(entries[entries.length - 1].timestamp).toLocaleDateString()
-        : 'None',
-  };
-}
-
-/**
  * Generate a simple calendar view
  * @param entries Array of log entries
  * @returns String representation of the calendar
@@ -173,9 +152,6 @@ const dashboardCommand: Command = {
 
       // Extract tags
       const tags = extractTags(entries);
-
-      // Calculate statistics
-      const stats = calculateStats(entries);
 
       // Create a screen object
       const screen = blessed.screen({
@@ -330,35 +306,6 @@ const dashboardCommand: Command = {
           tagsContent += `${tag} (${count})\n`;
         });
       tagsBox.setContent(tagsContent || 'No tags found');
-
-      // Create a box for statistics
-      const statsBox = blessed.box({
-        parent: screen,
-        top: '33%',
-        left: '30%',
-        width: '30%',
-        height: '30%',
-        border: {
-          type: 'line',
-        },
-        label: ' Statistics ',
-        style: {
-          fg: 'white',
-          border: {
-            fg: 'white',
-          },
-        },
-        tags: true, // Ensure tags are enabled
-      });
-
-      // Fill the stats box with content
-      statsBox.setContent(
-        `Total entries: ${stats.totalEntries}\n` +
-          `Days logged: ${stats.daysLogged}\n` +
-          `Avg entries/day: ${stats.entriesPerDay}\n` +
-          `First entry: ${stats.firstEntry}\n` +
-          `Last entry: ${stats.lastEntry}`
-      );
 
       // Create a box for quick entry
       const quickEntryBox = blessed.box({
