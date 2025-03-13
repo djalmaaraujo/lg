@@ -190,6 +190,25 @@ const dashboardCommand: Command = {
         debug: false,
       });
 
+      // Track if screen has been destroyed
+      let isScreenDestroyed = false;
+
+      // Add cleanup handlers
+      process.on('exit', () => {
+        if (!isScreenDestroyed) {
+          screen.destroy();
+          isScreenDestroyed = true;
+        }
+      });
+
+      process.on('SIGINT', () => {
+        if (!isScreenDestroyed) {
+          screen.destroy();
+          isScreenDestroyed = true;
+        }
+        process.exit(0);
+      });
+
       // Create a box for the header
       blessed.box({
         parent: screen,
@@ -263,12 +282,14 @@ const dashboardCommand: Command = {
             fg: 'white',
           },
         },
+        tags: true, // Ensure tags are enabled
       });
 
       // Fill the entries box with content
       let entriesContent = '';
       Object.keys(groupedEntries).forEach((date) => {
-        entriesContent += `{bold}${date}{/bold}\n`;
+        // Use styling directly with chalk-like syntax instead of {bold} tags
+        entriesContent += `\x1b[1m${date}\x1b[0m\n\n`; // Bold with ANSI escape codes + extra newline
         groupedEntries[date].forEach((entry) => {
           const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -298,6 +319,7 @@ const dashboardCommand: Command = {
             fg: 'white',
           },
         },
+        tags: true, // Ensure tags are enabled
       });
 
       // Fill the tags box with content
@@ -326,6 +348,7 @@ const dashboardCommand: Command = {
             fg: 'white',
           },
         },
+        tags: true, // Ensure tags are enabled
       });
 
       // Fill the stats box with content
@@ -405,6 +428,9 @@ const dashboardCommand: Command = {
 
       // Handle key events
       screen.key(['escape', 'q', 'C-c'], () => {
+        // Ensure proper cleanup before exiting
+        screen.destroy();
+        isScreenDestroyed = true;
         return process.exit(0);
       });
 
@@ -429,6 +455,23 @@ const dashboardCommand: Command = {
 
             // Update UI
             quickEntryInput.clearValue();
+
+            // Refresh the entries display
+            let updatedEntriesContent = '';
+            const updatedGroupedEntries = groupEntriesByDate(entries);
+            Object.keys(updatedGroupedEntries).forEach((date) => {
+              updatedEntriesContent += `\x1b[1m${date}\x1b[0m\n\n`; // Bold with ANSI escape codes + extra newline
+              updatedGroupedEntries[date].forEach((entry) => {
+                const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                updatedEntriesContent += `  [${time}] ${entry.content}\n`;
+              });
+              updatedEntriesContent += '\n';
+            });
+            entriesBox.setContent(updatedEntriesContent);
+
             screen.render();
 
             // Show success message
