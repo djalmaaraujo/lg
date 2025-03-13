@@ -386,7 +386,14 @@ const dashboardCommand: Command = {
 
       // Handle key events
       screen.key(['escape', 'q', 'C-c'], () => {
-        // Ensure proper cleanup before exiting
+        // If input is focused, blur it first on Escape
+        if (screen.focused === quickEntryInput) {
+          entriesBox.focus();
+          screen.render();
+          return;
+        }
+
+        // Otherwise, exit the dashboard
         screen.destroy();
         isScreenDestroyed = true;
         return process.exit(0);
@@ -483,38 +490,47 @@ const dashboardCommand: Command = {
         }
       });
 
-      // Add navigation between panels with arrow keys
-      screen.key(['up', 'down', 'left', 'right'], (_, key) => {
+      // Completely rewrite the navigation logic to ensure it works properly
+      // Create a function to handle navigation between panels
+      const navigatePanels = (direction: 'up' | 'down' | 'left' | 'right') => {
         const currentFocus = screen.focused;
 
-        if (key.name === 'left') {
+        // Define the navigation map
+        if (direction === 'left') {
           if (currentFocus === entriesBox) {
             tagsBox.focus();
-          } else if (currentFocus === quickEntryInput) {
-            entriesBox.focus();
           }
-        } else if (key.name === 'right') {
+        } else if (direction === 'right') {
           if (currentFocus === tagsBox) {
             entriesBox.focus();
           }
-        } else if (key.name === 'up') {
+        } else if (direction === 'up') {
           if (currentFocus === quickEntryInput) {
             entriesBox.focus();
           }
-        } else if (key.name === 'down') {
+        } else if (direction === 'down') {
           if (currentFocus === entriesBox || currentFocus === tagsBox) {
             quickEntryInput.focus();
           }
         }
 
         screen.render();
-      });
+      };
+
+      // Set up individual key handlers for better control
+      screen.key('left', () => navigatePanels('left'));
+      screen.key('right', () => navigatePanels('right'));
+      screen.key('up', () => navigatePanels('up'));
+      screen.key('down', () => navigatePanels('down'));
 
       // Render the screen
       screen.render();
 
-      // Focus on the entries box by default
+      // Focus on the entries box by default - make sure this happens
       entriesBox.focus();
+
+      // Ensure the input doesn't have focus by explicitly focusing on the entries box
+      screen.render();
     } catch (error) {
       logger.error(
         `Error displaying dashboard: ${error instanceof Error ? error.message : String(error)}`
