@@ -355,7 +355,7 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content: 'Press e for entries view, i for input mode, Esc to exit, Ctrl+S to save entry',
+        content: 'Press e/i to switch views, ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
         top: 3,
         left: 0,
       });
@@ -367,7 +367,8 @@ const dashboardCommand: Command = {
         left: 0,
         width: '100%',
         height: 3,
-        content: '{center}Press q to quit, e/i to switch modes, arrow keys to scroll{/center}',
+        content:
+          '{center}Press q to quit, e/i to navigate, ENTER to edit, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -382,9 +383,10 @@ const dashboardCommand: Command = {
       });
 
       // Define modes
-      const ENTRIES_MODE = 0;
-      const INPUT_MODE = 1;
-      let activeMode = ENTRIES_MODE;
+      const ENTRIES_VIEW = 0;
+      const INPUT_VIEW = 1;
+      const EDITING_MODE = 2;
+      let activeMode = ENTRIES_VIEW;
 
       // Track input state
       let currentInput = '';
@@ -397,12 +399,16 @@ const dashboardCommand: Command = {
         tagsBox.setLabel(' Tags ');
         quickEntryBox.setLabel(' Quick Entry ');
 
-        if (activeMode === ENTRIES_MODE) {
+        if (activeMode === ENTRIES_VIEW) {
           entriesBox.setLabel('{green-fg}[ACTIVE] Recent Entries{/green-fg}');
           entriesBox.focus();
           inputBox.setContent(currentInput);
-        } else if (activeMode === INPUT_MODE) {
+        } else if (activeMode === INPUT_VIEW) {
           quickEntryBox.setLabel('{green-fg}[ACTIVE] Quick Entry{/green-fg}');
+          inputBox.setContent(currentInput);
+          // Don't focus anything in view mode
+        } else if (activeMode === EDITING_MODE) {
+          quickEntryBox.setLabel('{green-fg}[EDITING] Quick Entry{/green-fg}');
 
           // Show cursor in input box
           const beforeCursor = currentInput.substring(0, inputCursor);
@@ -410,30 +416,40 @@ const dashboardCommand: Command = {
           const afterCursor = currentInput.substring(inputCursor + 1);
 
           inputBox.setContent(beforeCursor + '{inverse}' + atCursor + '{/inverse}' + afterCursor);
-
-          // We don't call focus on any element in input mode
+          // Don't focus anything in editing mode
         }
 
         screen.render();
       };
 
-      // Direct key for entries mode
+      // Direct key for entries view (only works in navigation mode)
       screen.key('e', () => {
-        activeMode = ENTRIES_MODE;
-        updateDisplay();
+        if (activeMode !== EDITING_MODE) {
+          activeMode = ENTRIES_VIEW;
+          updateDisplay();
+        }
       });
 
-      // Direct key for input mode
+      // Direct key for input view (only works in navigation mode)
       screen.key('i', () => {
-        activeMode = INPUT_MODE;
-        updateDisplay();
+        if (activeMode !== EDITING_MODE) {
+          activeMode = INPUT_VIEW;
+          updateDisplay();
+        }
       });
 
       // Handle escape and q to exit
       screen.key(['escape', 'q', 'C-c'], (_, key) => {
-        // If in input mode, switch to entries mode on Escape
-        if (activeMode === INPUT_MODE && key.name === 'escape') {
-          activeMode = ENTRIES_MODE;
+        // If in editing mode, exit to input view
+        if (activeMode === EDITING_MODE && key.name === 'escape') {
+          activeMode = INPUT_VIEW;
+          updateDisplay();
+          return;
+        }
+
+        // If in input view, exit to entries view on Escape
+        if (activeMode === INPUT_VIEW && key.name === 'escape') {
+          activeMode = ENTRIES_VIEW;
           updateDisplay();
           return;
         }
@@ -444,22 +460,27 @@ const dashboardCommand: Command = {
         return process.exit(0);
       });
 
-      // Focus on input when Enter is pressed (if in entries mode)
+      // Focus on input when Enter is pressed
       screen.key('enter', () => {
-        if (activeMode === ENTRIES_MODE) {
-          activeMode = INPUT_MODE;
+        if (activeMode === ENTRIES_VIEW) {
+          // From entries view, go to input view
+          activeMode = INPUT_VIEW;
           updateDisplay();
-        } else if (activeMode === INPUT_MODE) {
-          // In input mode, Enter adds a newline
+        } else if (activeMode === INPUT_VIEW) {
+          // From input view, enter editing mode
+          activeMode = EDITING_MODE;
+          updateDisplay();
+        } else if (activeMode === EDITING_MODE) {
+          // In editing mode, Enter adds a newline
           currentInput += '\n';
           inputCursor = currentInput.length;
           updateDisplay();
         }
       });
 
-      // Handle input in INPUT_MODE
+      // Handle input in EDITING_MODE
       screen.on('keypress', (ch, key) => {
-        if (activeMode !== INPUT_MODE || !key) return;
+        if (activeMode !== EDITING_MODE || !key) return;
 
         // Handle special keys
         if (key.name === 'backspace') {
@@ -491,7 +512,7 @@ const dashboardCommand: Command = {
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        if (activeMode === INPUT_MODE && currentInput.trim()) {
+        if ((activeMode === EDITING_MODE || activeMode === INPUT_VIEW) && currentInput.trim()) {
           try {
             // Add new entry
             const newEntry: LogEntry = {
@@ -541,6 +562,8 @@ const dashboardCommand: Command = {
               },
             });
             successBox.display('Entry added successfully!', 3, () => {
+              // After saving, go back to entries view
+              activeMode = ENTRIES_VIEW;
               updateDisplay();
             });
           } catch (error) {
@@ -573,8 +596,8 @@ const dashboardCommand: Command = {
         }
       });
 
-      // Initial mode is entries
-      activeMode = ENTRIES_MODE;
+      // Initial mode is entries view
+      activeMode = ENTRIES_VIEW;
       updateDisplay();
     } catch (error) {
       logger.error(
