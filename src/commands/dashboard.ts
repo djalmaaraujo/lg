@@ -262,11 +262,6 @@ const dashboardCommand: Command = {
           border: {
             fg: 'white',
           },
-          focus: {
-            border: {
-              fg: 'green',
-            },
-          },
         },
         tags: true, // Ensure tags are enabled
       });
@@ -310,11 +305,6 @@ const dashboardCommand: Command = {
           fg: 'white',
           border: {
             fg: 'white',
-          },
-          focus: {
-            border: {
-              fg: 'green',
-            },
           },
         },
         tags: true, // Ensure tags are enabled
@@ -403,31 +393,77 @@ const dashboardCommand: Command = {
       const focusOrder = [entriesBox, tagsBox, quickEntryInput];
       let focusIndex = 0;
 
+      // Create separate boxes for focus indicators
+      const entriesFocusBox = blessed.box({
+        parent: screen,
+        top: 3,
+        left: '30%',
+        width: '70%',
+        height: '50%',
+        border: {
+          type: 'line',
+        },
+        style: {
+          border: {
+            fg: 'green',
+          },
+        },
+      });
+      entriesFocusBox.hide();
+
+      const tagsFocusBox = blessed.box({
+        parent: screen,
+        top: '33%',
+        left: 0,
+        width: '30%',
+        height: '30%',
+        border: {
+          type: 'line',
+        },
+        style: {
+          border: {
+            fg: 'green',
+          },
+        },
+      });
+      tagsFocusBox.hide();
+
+      const inputFocusBox = blessed.box({
+        parent: screen,
+        top: '63%',
+        left: 0,
+        width: '100%',
+        height: '20%',
+        border: {
+          type: 'line',
+        },
+        style: {
+          border: {
+            fg: 'green',
+          },
+        },
+      });
+      inputFocusBox.hide();
+
       // Function to update focus based on current index
       const updateFocus = () => {
-        // Set all borders to white first
-        if (entriesBox.style && entriesBox.style.border) {
-          entriesBox.style.border.fg = 'white';
-        }
-        if (tagsBox.style && tagsBox.style.border) {
-          tagsBox.style.border.fg = 'white';
-        }
-        if (quickEntryBox.style && quickEntryBox.style.border) {
-          quickEntryBox.style.border.fg = 'white';
+        // Hide all focus boxes
+        entriesFocusBox.hide();
+        tagsFocusBox.hide();
+        inputFocusBox.hide();
+
+        // Show the appropriate focus box
+        if (focusIndex === 0) {
+          entriesFocusBox.show();
+          entriesBox.focus();
+        } else if (focusIndex === 1) {
+          tagsFocusBox.show();
+          tagsBox.focus();
+        } else if (focusIndex === 2) {
+          inputFocusBox.show();
+          quickEntryInput.focus();
         }
 
-        // Set the focused element's border to green
-        const focusedElement = focusOrder[focusIndex];
-        if (focusedElement === quickEntryInput) {
-          if (quickEntryBox.style && quickEntryBox.style.border) {
-            quickEntryBox.style.border.fg = 'green';
-          }
-        } else if (focusedElement.style && focusedElement.style.border) {
-          focusedElement.style.border.fg = 'green';
-        }
-
-        // Focus the element
-        focusedElement.focus();
         screen.render();
       };
 
@@ -444,9 +480,9 @@ const dashboardCommand: Command = {
       });
 
       // Handle escape and q to exit
-      screen.key(['escape', 'q', 'C-c'], () => {
+      screen.key(['escape', 'q', 'C-c'], (_, key) => {
         // If input is focused, blur it first on Escape
-        if (focusOrder[focusIndex] === quickEntryInput && screen.focused === quickEntryInput) {
+        if (focusIndex === 2 && key.name === 'escape') {
           // Switch focus to entries box
           focusIndex = 0;
           updateFocus();
@@ -461,15 +497,15 @@ const dashboardCommand: Command = {
 
       // Focus on input when Enter is pressed (only if not already on input)
       screen.key('enter', () => {
-        if (focusOrder[focusIndex] !== quickEntryInput) {
-          focusIndex = focusOrder.indexOf(quickEntryInput);
+        if (focusIndex !== 2) {
+          focusIndex = 2;
           updateFocus();
         }
       });
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        if (focusOrder[focusIndex] === quickEntryInput) {
+        if (focusIndex === 2) {
           const content = quickEntryInput.getValue();
           if (content.trim()) {
             try {
