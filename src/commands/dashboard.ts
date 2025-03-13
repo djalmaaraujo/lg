@@ -393,74 +393,24 @@ const dashboardCommand: Command = {
       const focusOrder = [entriesBox, tagsBox, quickEntryInput];
       let focusIndex = 0;
 
-      // Create separate boxes for focus indicators
-      const entriesFocusBox = blessed.box({
-        parent: screen,
-        top: 3,
-        left: '30%',
-        width: '70%',
-        height: '50%',
-        border: {
-          type: 'line',
-        },
-        style: {
-          border: {
-            fg: 'green',
-          },
-        },
-      });
-      entriesFocusBox.hide();
-
-      const tagsFocusBox = blessed.box({
-        parent: screen,
-        top: '33%',
-        left: 0,
-        width: '30%',
-        height: '30%',
-        border: {
-          type: 'line',
-        },
-        style: {
-          border: {
-            fg: 'green',
-          },
-        },
-      });
-      tagsFocusBox.hide();
-
-      const inputFocusBox = blessed.box({
-        parent: screen,
-        top: '63%',
-        left: 0,
-        width: '100%',
-        height: '20%',
-        border: {
-          type: 'line',
-        },
-        style: {
-          border: {
-            fg: 'green',
-          },
-        },
-      });
-      inputFocusBox.hide();
+      // Remove all the focus overlay boxes
 
       // Function to update focus based on current index
       const updateFocus = () => {
-        // Hide all focus boxes
-        entriesFocusBox.hide();
-        tagsFocusBox.hide();
-        inputFocusBox.hide();
+        // Reset all labels to default
+        entriesBox.setLabel(' Recent Entries ');
+        tagsBox.setLabel(' Tags ');
+        quickEntryBox.setLabel(' Quick Entry ');
 
-        // Show the appropriate focus box
+        // Set the focused element's label to indicate focus
         if (focusIndex === 0) {
-          entriesFocusBox.show();
+          entriesBox.setLabel('{green-fg}[FOCUSED] Recent Entries{/green-fg}');
           entriesBox.focus();
         } else if (focusIndex === 1) {
-          tagsFocusBox.show();
+          tagsBox.setLabel('{green-fg}[FOCUSED] Tags{/green-fg}');
           tagsBox.focus();
         } else if (focusIndex === 2) {
-          inputFocusBox.show();
+          quickEntryBox.setLabel('{green-fg}[FOCUSED] Quick Entry{/green-fg}');
           quickEntryInput.focus();
         }
 
