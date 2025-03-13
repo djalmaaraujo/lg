@@ -34,6 +34,9 @@ lg log "Learned something new"
 
 # List all entries
 lg list
+
+# View interactive dashboard
+lg dash
 ```
 
 ## Interactive Mode
@@ -46,6 +49,24 @@ $ lg
 ```
 
 This interactive mode automatically handles special characters without requiring quotes or escaping.
+
+## Dashboard
+
+The CLI includes a rich interactive dashboard for visualizing and managing your log entries:
+
+```bash
+$ lg dash
+```
+
+The dashboard provides:
+
+- Calendar view showing days with entries
+- List of recent entries
+- Tag statistics
+- Entry statistics
+- Quick entry form for adding new logs
+
+Navigate with arrow keys, press Enter to focus on the quick entry form, and Ctrl+S to save a new entry. Press q to quit.
 
 ## Handling Special Characters
 
@@ -96,6 +117,7 @@ lgl Meeting with Tom at 9am (might be late) #work
 - `log` or `add`: Log a life entry
 - `list` or `ls`: List all logged entries
 - `remove` or `rm`: Remove log entries
+- `dashboard` or `dash`: Display interactive dashboard
 
 ## License
 
