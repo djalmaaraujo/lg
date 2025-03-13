@@ -330,6 +330,7 @@ const dashboardCommand: Command = {
           type: 'line',
         },
         label: ' Quick Entry ',
+        tags: true, // Ensure tags are enabled for the label
         style: {
           fg: 'white',
           border: {
@@ -355,7 +356,8 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content: 'Press e/i to switch views, ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
+        content:
+          'Press TAB/e/i to switch views, ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
         top: 3,
         left: 0,
       });
@@ -368,7 +370,7 @@ const dashboardCommand: Command = {
         width: '100%',
         height: 3,
         content:
-          '{center}Press q to quit, e/i to navigate, ENTER to edit, arrow keys to scroll{/center}',
+          '{center}Press q to quit, TAB/e/i to navigate, ENTER to edit, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -400,15 +402,15 @@ const dashboardCommand: Command = {
         quickEntryBox.setLabel(' Quick Entry ');
 
         if (activeMode === ENTRIES_VIEW) {
-          entriesBox.setLabel('{green-fg}[ACTIVE] Recent Entries{/green-fg}');
+          entriesBox.setLabel(' \u001b[32m[ACTIVE] Recent Entries\u001b[0m ');
           entriesBox.focus();
           inputBox.setContent(currentInput);
         } else if (activeMode === INPUT_VIEW) {
-          quickEntryBox.setLabel('{green-fg}[ACTIVE] Quick Entry{/green-fg}');
+          quickEntryBox.setLabel(' \u001b[32m[ACTIVE] Quick Entry\u001b[0m ');
           inputBox.setContent(currentInput);
           // Don't focus anything in view mode
         } else if (activeMode === EDITING_MODE) {
-          quickEntryBox.setLabel('{green-fg}[EDITING] Quick Entry{/green-fg}');
+          quickEntryBox.setLabel(' \u001b[32m[EDITING] Quick Entry\u001b[0m ');
 
           // Show cursor in input box
           const beforeCursor = currentInput.substring(0, inputCursor);
@@ -593,6 +595,15 @@ const dashboardCommand: Command = {
               }
             );
           }
+        }
+      });
+
+      // Add TAB key for navigation between views (only works in navigation mode)
+      screen.key('tab', () => {
+        if (activeMode !== EDITING_MODE) {
+          // Toggle between ENTRIES_VIEW and INPUT_VIEW
+          activeMode = activeMode === ENTRIES_VIEW ? INPUT_VIEW : ENTRIES_VIEW;
+          updateDisplay();
         }
       });
 
