@@ -1,0 +1,13 @@
+#!/bin/bash
+# bin/lgl - A simple wrapper for logging entries with special characters
+
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+  # If no arguments, just run lg (which will show the list)
+  lg
+  exit $?
+else
+  # Otherwise, log the entire command line as a single entry
+  lg log "$*"
+  exit $?
+fi 

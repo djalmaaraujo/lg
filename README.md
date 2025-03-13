@@ -47,11 +47,9 @@ When logging entries with special characters like `#`, `!`, `&`, `()`, etc., you
 lg "Meeting with Tom at 9am (might be late) #work"
 ```
 
-If you're using zsh and experiencing issues with parentheses or other special characters, here are some alternatives:
+This is because shell interpreters like bash and zsh process special characters before passing arguments to the CLI.
 
-### Option 1: Add a function to your shell configuration
-
-Add this function to your `~/.zshrc` or `~/.bashrc` file:
+For the best experience with special characters, add this function to your shell configuration file:
 
 ```bash
 # Add this to your ~/.zshrc or ~/.bashrc file
@@ -70,21 +68,7 @@ Then you can use `lgl` for logging entries with special characters:
 lgl Meeting with Tom at 9am (might be late) #work
 ```
 
-### Option 2: Use the log command directly
-
-Always use the `log` command with quotes:
-
-```bash
-lg log "Meeting with Tom at 9am (might be late) #work"
-```
-
-### Option 3: Escape special characters
-
-Escape special characters with backslashes:
-
-```bash
-lg Meeting with Tom at 9am \(might be late\) \#work
-```
+This function will automatically pass your entire message to the `lg log` command, preserving all special characters.
 
 ## Commands
 

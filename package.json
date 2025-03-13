@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "lg": "./dist/index.js"
+    "lg": "./dist/index.js",
+    "lgl": "./bin/lgl"
   },
   "scripts": {
     "start": "node dist/index.js",
