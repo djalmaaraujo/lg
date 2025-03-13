@@ -363,7 +363,7 @@ const dashboardCommand: Command = {
       blessed.text({
         parent: quickEntryBox,
         content:
-          'Press TAB to switch panels, Enter to focus input, Esc to blur, Ctrl+S to save entry',
+          'Press n/p to switch panels, Enter to focus input, Esc to blur, Ctrl+S to save entry',
         top: 3,
         left: 0,
       });
@@ -375,7 +375,7 @@ const dashboardCommand: Command = {
         left: 0,
         width: '100%',
         height: 3,
-        content: '{center}Press q to quit, TAB to switch panels, arrow keys to scroll{/center}',
+        content: '{center}Press q to quit, n/p to switch panels, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -417,14 +417,14 @@ const dashboardCommand: Command = {
         screen.render();
       };
 
-      // Handle tab key to switch focus
-      screen.key('tab', () => {
+      // Replace tab with 'n' for next panel
+      screen.key('n', () => {
         focusIndex = (focusIndex + 1) % focusOrder.length;
         updateFocus();
       });
 
-      // Handle S-tab (shift+tab) to switch focus in reverse
-      screen.key('S-tab', () => {
+      // Replace shift+tab with 'p' for previous panel
+      screen.key('p', () => {
         focusIndex = (focusIndex - 1 + focusOrder.length) % focusOrder.length;
         updateFocus();
       });
