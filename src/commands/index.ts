@@ -1,4 +1,8 @@
 import { Command } from '../types/index.js';
+import setupCommand from './setup.js';
+import logCommand from './log.js';
+import listCommand from './list.js';
+import defaultCommand from './default.js';
 
 /**
  * Registry of available commands
@@ -38,4 +42,18 @@ export function findCommand(nameOrAlias: string): Command | undefined {
  */
 export function registerCommands(cmds: Command[]): void {
   cmds.forEach(registerCommand);
-} 
+}
+
+/**
+ * Get the default command
+ * @returns Default command
+ */
+export function getDefaultCommand(): Command {
+  return defaultCommand;
+}
+
+// Register commands
+registerCommand(setupCommand);
+registerCommand(logCommand);
+registerCommand(listCommand);
+registerCommand(defaultCommand); 
