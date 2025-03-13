@@ -1,0 +1,13 @@
+{
+  "formatOnSave": true,
+  "defaultFormatter": "prettier",
+  "tabSize": 2,
+  "insertSpaces": true,
+  "lineEnding": "lf",
+  "trimTrailingWhitespace": true,
+  "insertFinalNewline": true,
+  "organizeImportsOnSave": true,
+  "codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
+} 

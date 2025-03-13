@@ -1,0 +1,31 @@
+# TypeScript Guidelines
+
+## Version and Compatibility
+- Use TypeScript 5.3.x or newer
+- Maintain compatibility with Node.js 18.x and newer
+- Use ES2022 as the target
+
+## Type Safety
+- Enable strict mode in TypeScript configuration
+- Avoid using `any` type - use proper typing or `unknown` when necessary
+- Use type inference where it improves readability
+- Define interfaces for all data structures
+- Use generics for reusable components
+- Export types from dedicated files (e.g., `src/types/index.ts`)
+
+## TypeScript Features
+- Use optional chaining (`?.`) and nullish coalescing (`??`) operators
+- Prefer template literals over string concatenation
+- Use async/await for asynchronous operations
+- Use ES modules (`import`/`export`) syntax
+- Use readonly modifiers for immutable properties
+- Use type guards for runtime type checking
+
+## Type Definitions
+- Create interfaces for all data structures
+- Use type aliases for complex types
+- Use union types for variables that can have multiple types
+- Use intersection types to combine types
+- Use generics for reusable components
+- Use mapped types for transforming existing types
+- Use utility types (Pick, Omit, Partial, etc.) when appropriate 
