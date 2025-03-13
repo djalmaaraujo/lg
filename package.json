@@ -17,8 +17,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "prepare": "npm run build",
     "refresh": "npm run build && npm link",
-    "update-cli": "npm uninstall -g lg && npm link",
-    "log": "node -e \"const { execSync } = require('child_process'); const args = process.argv.slice(2).join(' '); if (args) { execSync(`lg log \"${args}\"`, { stdio: 'inherit' }); } else { execSync('lg', { stdio: 'inherit' }); }\""
+    "update-cli": "npm uninstall -g lg && npm link"
   },
   "keywords": [
     "cli",
