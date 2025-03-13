@@ -6,7 +6,7 @@ import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import listCommand from './list.js';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { syncWithGist, isGistSyncConfigured } from '../utils/gistSync.js';
+import { syncWithGistInBackground, isGistSyncConfigured } from '../utils/gistSync.js';
 
 /**
  * Add a log entry to the storage file
@@ -32,17 +32,11 @@ async function addLogEntry(content: string, customDate?: string): Promise<void> 
     // Write the updated entries back to the file
     await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
-    // Sync with GitHub Gist if configured
+    // Sync with GitHub Gist in the background if configured
     if (await isGistSyncConfigured()) {
-      try {
-        await syncWithGist(entries);
-        logger.debug('Synced entries with GitHub Gist');
-      } catch (syncError) {
-        logger.error(
-          `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
-        );
-        // Continue even if sync fails
-      }
+      // This will return immediately and sync in the background
+      syncWithGistInBackground(entries);
+      logger.debug('Started background sync with GitHub Gist');
     }
 
     logger.info('Entry logged successfully.');

@@ -4,7 +4,7 @@ import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import blessed from 'blessed';
-import { syncWithGist, isGistSyncConfigured } from '../utils/gistSync.js';
+import { syncWithGistInBackground, isGistSyncConfigured } from '../utils/gistSync.js';
 
 /**
  * Group entries by date
@@ -525,17 +525,10 @@ const dashboardCommand: Command = {
             entries.unshift(newEntry);
             await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
-            // Sync with GitHub Gist if configured
+            // Sync with GitHub Gist in the background if configured
             if (await isGistSyncConfigured()) {
-              try {
-                await syncWithGist(entries);
-                logger.debug('Synced entries with GitHub Gist from dashboard');
-              } catch (syncError) {
-                logger.error(
-                  `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
-                );
-                // Continue even if sync fails
-              }
+              syncWithGistInBackground(entries);
+              logger.debug('Started background sync with GitHub Gist from dashboard');
             }
 
             // Clear input

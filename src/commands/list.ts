@@ -5,6 +5,11 @@ import { Command, CommandOptions } from '../types/index.js';
 import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
+import {
+  syncWithGistInBackground,
+  performFullSync,
+  isGistSyncConfigured,
+} from '../utils/gistSync.js';
 
 /**
  * Format a date string to display only the time (HH:MM)
@@ -70,6 +75,10 @@ const listCommand: Command = {
       flags: '-r, --reverse',
       description: 'Display entries in reverse order (newest first)',
     },
+    {
+      flags: '-s, --sync',
+      description: 'Perform a full sync with remote storage before listing entries',
+    },
   ],
 
   async execute(_args: string[], options: CommandOptions): Promise<void> {
@@ -82,11 +91,26 @@ const listCommand: Command = {
 
       // Read the entries
       const data = await fs.readFile(STORAGE_FILE, 'utf-8');
-      const entries: Storage = JSON.parse(data);
+      let entries: Storage = JSON.parse(data);
 
       if (entries.length === 0) {
         logger.info('No entries found. Start logging with: lg "Your message here"');
         return;
+      }
+
+      // If sync option is specified and gist sync is configured, perform a full sync
+      if (options.sync && (await isGistSyncConfigured())) {
+        logger.info('Syncing with remote storage...');
+        entries = await performFullSync(entries);
+
+        // Save the updated entries back to the file
+        await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
+        logger.info('Sync complete.');
+      } else {
+        // Otherwise, trigger a background sync
+        if (await isGistSyncConfigured()) {
+          syncWithGistInBackground(entries);
+        }
       }
 
       // Group entries by date

@@ -29,6 +29,11 @@ interface GistResponse {
   };
 }
 
+// Track if a sync is currently in progress
+let syncInProgress = false;
+let lastSyncTimestamp = 0;
+const SYNC_DEBOUNCE_MS = 5000; // 5 seconds debounce
+
 /**
  * Save GitHub token and gist ID to config file
  */
@@ -80,6 +85,29 @@ export async function loadGistConfig(): Promise<GistConfig | null> {
 export async function isGistSyncConfigured(): Promise<boolean> {
   const config = await loadGistConfig();
   return !!(config && config.token && config.gistId);
+}
+
+/**
+ * Check if internet is available by making a small request to GitHub API
+ */
+export async function isInternetAvailable(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+    const response = await fetch('https://api.github.com/zen', {
+      method: 'GET',
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch (error) {
+    logger.debug(
+      `Internet check failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return false;
+  }
 }
 
 /**
@@ -195,25 +223,132 @@ export async function fetchGistEntries(token: string, gistId: string): Promise<S
 }
 
 /**
+ * Sync local entries with gist in the background
+ * This function doesn't block and returns immediately
+ * @param localEntries The local entries to sync
+ */
+export function syncWithGistInBackground(localEntries: Storage): void {
+  // Don't start a new sync if one is already in progress or if we synced recently
+  const now = Date.now();
+  if (syncInProgress || now - lastSyncTimestamp < SYNC_DEBOUNCE_MS) {
+    logger.debug('Skipping background sync: another sync is in progress or synced recently');
+    return;
+  }
+
+  // Start background sync
+  syncInProgress = true;
+
+  // Clone the entries to avoid any potential mutation issues
+  const entriesToSync = JSON.parse(JSON.stringify(localEntries)) as Storage;
+
+  (async () => {
+    try {
+      // Check if sync is configured
+      const config = await loadGistConfig();
+      if (!config || !config.token || !config.gistId) {
+        logger.debug('Gist sync not configured, skipping background sync');
+        syncInProgress = false;
+        return;
+      }
+
+      // Check internet connectivity first
+      const isOnline = await isInternetAvailable();
+      if (!isOnline) {
+        logger.debug('No internet connection, skipping background sync');
+        syncInProgress = false;
+        return;
+      }
+
+      // Update the gist with local entries
+      await updateGist(config.token, config.gistId, entriesToSync);
+      logger.debug('Successfully synced entries with gist in background');
+
+      // Update last sync timestamp
+      lastSyncTimestamp = Date.now();
+    } catch (error) {
+      logger.error(
+        `Background sync failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      syncInProgress = false;
+    }
+  })().catch((error) => {
+    logger.error(
+      `Unhandled error in background sync: ${error instanceof Error ? error.message : String(error)}`
+    );
+    syncInProgress = false;
+  });
+}
+
+/**
  * Sync local entries with gist
  * This is the main function that should be called after any modification to entries
+ * It now returns immediately and performs the sync in the background
  */
 export async function syncWithGist(localEntries: Storage): Promise<Storage> {
+  // Start the sync in the background
+  syncWithGistInBackground(localEntries);
+
+  // Return immediately with the local entries
+  return localEntries;
+}
+
+/**
+ * Perform a full sync with the remote gist
+ * This is a blocking operation that will fetch remote entries and merge them with local entries
+ * Use this when you want to ensure you have the latest data from the remote
+ */
+export async function performFullSync(localEntries: Storage): Promise<Storage> {
   try {
+    // Check if sync is configured
     const config = await loadGistConfig();
     if (!config || !config.token || !config.gistId) {
-      logger.debug('Gist sync not configured, skipping sync');
+      logger.debug('Gist sync not configured, skipping full sync');
       return localEntries;
     }
 
-    // Update the gist with local entries
+    // Check internet connectivity
+    const isOnline = await isInternetAvailable();
+    if (!isOnline) {
+      logger.debug('No internet connection, skipping full sync');
+      return localEntries;
+    }
+
+    // Fetch remote entries
+    const remoteEntries = await fetchGistEntries(config.token, config.gistId);
+    if (!remoteEntries) {
+      logger.debug('No remote entries found, using local entries only');
+
+      // Still update the remote with our local entries
+      await updateGist(config.token, config.gistId, localEntries);
+      return localEntries;
+    }
+
+    // Merge local and remote entries
+    // Create a map of existing entry timestamps to avoid duplicates
+    const existingTimestamps = new Set(localEntries.map((entry) => entry.timestamp));
+
+    // Add remote entries that don't exist locally
+    for (const remoteEntry of remoteEntries) {
+      if (!existingTimestamps.has(remoteEntry.timestamp)) {
+        localEntries.push(remoteEntry);
+      }
+    }
+
+    // Sort entries by timestamp (newest first)
+    localEntries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // Update the gist with merged entries
     await updateGist(config.token, config.gistId, localEntries);
-    logger.debug('Successfully synced entries with gist');
+    logger.debug('Successfully performed full sync with gist');
+
+    // Update last sync timestamp
+    lastSyncTimestamp = Date.now();
 
     return localEntries;
   } catch (error) {
     logger.error(
-      `Failed to sync with gist: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to perform full sync: ${error instanceof Error ? error.message : String(error)}`
     );
     return localEntries;
   }

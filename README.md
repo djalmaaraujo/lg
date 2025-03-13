@@ -35,6 +35,9 @@ lg log "Learned something new"
 # List all entries
 lg list
 
+# Force a full sync with remote storage
+lg list --sync
+
 # View interactive dashboard
 lg dash
 ```
@@ -89,17 +92,27 @@ lg setup
 
 ### How Sync Works
 
-- Every time you add or remove entries, they are automatically synced with your GitHub Gist
+- Every time you add or remove entries, they are automatically synced with your GitHub Gist in the background
+- Sync happens without blocking your commands - you can continue using the CLI even without internet
 - If you use Life Logger on multiple devices with the same GitHub account, your entries will be synchronized
 - When setting up a new device, if the Gist already contains entries, they will be imported automatically
-- Sync happens automatically in the background - no manual action required
+
+### Offline Support
+
+Life Logger works seamlessly offline:
+
+- All operations work locally without requiring an internet connection
+- When you're offline, changes are stored locally
+- When internet becomes available, background sync will automatically update the remote storage
+- Use `lg list --sync` to force a full sync with remote storage when you're back online
 
 ### Benefits of Gist Sync
 
 - **Backup**: Your entries are safely stored in your GitHub account
 - **Multi-device**: Access and update your logs from any device
 - **Private**: Gists are created as private by default
-- **Seamless**: Sync happens automatically whenever you add or remove entries
+- **Seamless**: Sync happens automatically in the background
+- **Offline-first**: Works without internet, syncs when connection is available
 
 ## Handling Special Characters
 
@@ -148,7 +161,7 @@ lgl Meeting with Tom at 9am (might be late) #work
 
 - `setup`: Initialize the CLI and configure GitHub Gist sync
 - `log` or `add`: Log a life entry
-- `list` or `ls`: List all logged entries
+- `list` or `ls`: List all logged entries (use `--sync` flag to force full sync)
 - `remove` or `rm`: Remove log entries
 - `dashboard` or `dash`: Display interactive dashboard
 
