@@ -114,24 +114,20 @@ const listCommand: Command = {
       dates.forEach((date) => {
         const entriesForDate = groupedEntries[date];
 
-        // Sort entries within the day (newest first by default)
-        entriesForDate.sort((a, b) => {
-          return options.reverse
-            ? a.timestamp.localeCompare(b.timestamp)
-            : b.timestamp.localeCompare(a.timestamp);
-        });
+        // Always sort entries within the day in ascending order (oldest first)
+        // This makes the most recent entries appear at the bottom in the terminal
+        entriesForDate.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
         // Display date header
         console.log(chalk.bgBlue.white.bold(` ${formatDate(date)} `));
-        console.log(chalk.dim('─'.repeat(50)));
 
         // Display entries for this date
         entriesForDate.forEach((entry) => {
-          console.log(chalk.yellow(`[${formatTime(entry.timestamp)}]`));
-          console.log(entry.content);
-          console.log(chalk.dim('─'.repeat(50)));
+          // Format each entry on a single line: [time] content
+          console.log(`${chalk.yellow(`[${formatTime(entry.timestamp)}]`)} ${entry.content}`);
         });
 
+        console.log(); // Add an empty line after each day's entries
         totalEntries += entriesForDate.length;
       });
 
