@@ -250,10 +250,9 @@ const dashboardCommand: Command = {
             inverse: true,
           },
         },
-        // Remove keys, vi, and mouse to prevent conflicts
-        keys: false,
-        vi: false,
-        mouse: false,
+        keys: true, // Enable keys for scrolling
+        vi: true, // Enable vi keys for scrolling
+        mouse: true,
         border: {
           type: 'line',
         },
@@ -296,8 +295,7 @@ const dashboardCommand: Command = {
         width: '30%',
         height: '30%',
         scrollable: true,
-        // Remove keys to prevent conflicts
-        keys: false,
+        keys: true, // Enable keys for scrolling
         border: {
           type: 'line',
         },
@@ -375,7 +373,7 @@ const dashboardCommand: Command = {
       blessed.text({
         parent: quickEntryBox,
         content:
-          'Press Enter to focus input, Esc to blur, Ctrl+S to save entry, Arrow keys to navigate',
+          'Press TAB to switch panels, Enter to focus input, Esc to blur, Ctrl+S to save entry',
         top: 3,
         left: 0,
       });
@@ -387,7 +385,7 @@ const dashboardCommand: Command = {
         left: 0,
         width: '100%',
         height: 3,
-        content: '{center}Press q to quit, arrow keys to navigate{/center}',
+        content: '{center}Press q to quit, TAB to switch panels, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -401,81 +399,77 @@ const dashboardCommand: Command = {
         },
       });
 
-      // Track the currently focused element
-      let currentFocus = 'entries'; // 'entries', 'tags', or 'input'
+      // Define the focus order
+      const focusOrder = [entriesBox, tagsBox, quickEntryInput];
+      let focusIndex = 0;
 
-      // Function to update focus based on current state
+      // Function to update focus based on current index
       const updateFocus = () => {
-        if (currentFocus === 'entries') {
-          entriesBox.style.border.fg = 'green';
-          tagsBox.style.border.fg = 'white';
-          quickEntryBox.style.border.fg = 'white';
-          entriesBox.focus();
-        } else if (currentFocus === 'tags') {
+        // Set all borders to white first
+        if (entriesBox.style && entriesBox.style.border) {
           entriesBox.style.border.fg = 'white';
-          tagsBox.style.border.fg = 'green';
-          quickEntryBox.style.border.fg = 'white';
-          tagsBox.focus();
-        } else if (currentFocus === 'input') {
-          entriesBox.style.border.fg = 'white';
-          tagsBox.style.border.fg = 'white';
-          quickEntryBox.style.border.fg = 'green';
-          quickEntryInput.focus();
         }
+        if (tagsBox.style && tagsBox.style.border) {
+          tagsBox.style.border.fg = 'white';
+        }
+        if (quickEntryBox.style && quickEntryBox.style.border) {
+          quickEntryBox.style.border.fg = 'white';
+        }
+
+        // Set the focused element's border to green
+        const focusedElement = focusOrder[focusIndex];
+        if (focusedElement === quickEntryInput) {
+          if (quickEntryBox.style && quickEntryBox.style.border) {
+            quickEntryBox.style.border.fg = 'green';
+          }
+        } else if (focusedElement.style && focusedElement.style.border) {
+          focusedElement.style.border.fg = 'green';
+        }
+
+        // Focus the element
+        focusedElement.focus();
         screen.render();
       };
 
-      // Handle all key events in a single handler
-      screen.key(['escape', 'q', 'C-c', 'enter', 'up', 'down', 'left', 'right'], (_, key) => {
-        // Handle exit keys
-        if (key.name === 'escape' || key.name === 'q' || (key.ctrl && key.name === 'c')) {
-          // If input is focused, blur it first on Escape
-          if (currentFocus === 'input' && key.name === 'escape') {
-            currentFocus = 'entries';
-            updateFocus();
-            return;
-          }
+      // Handle tab key to switch focus
+      screen.key('tab', () => {
+        focusIndex = (focusIndex + 1) % focusOrder.length;
+        updateFocus();
+      });
 
-          // Otherwise, exit the dashboard
-          screen.destroy();
-          isScreenDestroyed = true;
-          return process.exit(0);
-        }
+      // Handle S-tab (shift+tab) to switch focus in reverse
+      screen.key('S-tab', () => {
+        focusIndex = (focusIndex - 1 + focusOrder.length) % focusOrder.length;
+        updateFocus();
+      });
 
-        // Handle Enter key to focus input
-        if (key.name === 'enter' && currentFocus !== 'input') {
-          currentFocus = 'input';
+      // Handle escape and q to exit
+      screen.key(['escape', 'q', 'C-c'], () => {
+        // If input is focused, blur it first on Escape
+        if (focusOrder[focusIndex] === quickEntryInput && screen.focused === quickEntryInput) {
+          // Switch focus to entries box
+          focusIndex = 0;
           updateFocus();
           return;
         }
 
-        // Handle navigation keys
-        if (key.name === 'left') {
-          if (currentFocus === 'entries') {
-            currentFocus = 'tags';
-            updateFocus();
-          }
-        } else if (key.name === 'right') {
-          if (currentFocus === 'tags') {
-            currentFocus = 'entries';
-            updateFocus();
-          }
-        } else if (key.name === 'up') {
-          if (currentFocus === 'input') {
-            currentFocus = 'entries';
-            updateFocus();
-          }
-        } else if (key.name === 'down') {
-          if (currentFocus === 'entries' || currentFocus === 'tags') {
-            currentFocus = 'input';
-            updateFocus();
-          }
+        // Otherwise, exit the dashboard
+        screen.destroy();
+        isScreenDestroyed = true;
+        return process.exit(0);
+      });
+
+      // Focus on input when Enter is pressed (only if not already on input)
+      screen.key('enter', () => {
+        if (focusOrder[focusIndex] !== quickEntryInput) {
+          focusIndex = focusOrder.indexOf(quickEntryInput);
+          updateFocus();
         }
       });
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        if (currentFocus === 'input') {
+        if (focusOrder[focusIndex] === quickEntryInput) {
           const content = quickEntryInput.getValue();
           if (content.trim()) {
             try {
@@ -561,8 +555,8 @@ const dashboardCommand: Command = {
         }
       });
 
-      // Initial focus
-      currentFocus = 'entries';
+      // Initial focus on entries box
+      focusIndex = 0;
       updateFocus();
     } catch (error) {
       logger.error(
