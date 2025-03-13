@@ -2,7 +2,6 @@ import { Command, CommandOptions } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete } from './setup.js';
 import logCommand from './log.js';
-import listCommand from './list.js';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 
@@ -10,7 +9,7 @@ import inquirer from 'inquirer';
  * Default command implementation
  * This command is executed when no command is specified
  * It forwards the arguments to the log command if arguments are provided
- * If no arguments are provided, it shows an interactive prompt or lists entries
+ * If no arguments are provided, it directly prompts for a log entry
  */
 const defaultCommand: Command = {
   name: 'default',
@@ -24,43 +23,25 @@ const defaultCommand: Command = {
         return;
       }
 
-      // If no arguments are provided, show interactive prompt or list entries
+      // If no arguments are provided, directly prompt for a log entry
       if (args.length === 0) {
-        // Show interactive prompt for logging
-        const { action } = await inquirer.prompt([
+        // Prompt for the log entry content
+        const { content } = await inquirer.prompt([
           {
-            type: 'list',
-            name: 'action',
-            message: 'What would you like to do?',
-            choices: [
-              { name: 'Log a new entry', value: 'log' },
-              { name: 'View existing entries', value: 'list' },
-            ],
+            type: 'input',
+            name: 'content',
+            message: 'Enter your log entry:',
+            validate: (input) => {
+              if (input.trim() === '') {
+                return 'Entry cannot be empty';
+              }
+              return true;
+            },
           },
         ]);
 
-        if (action === 'log') {
-          // Prompt for the log entry content
-          const { content } = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'content',
-              message: 'Enter your log entry:',
-              validate: (input) => {
-                if (input.trim() === '') {
-                  return 'Entry cannot be empty';
-                }
-                return true;
-              },
-            },
-          ]);
-
-          // Forward to log command with the entered content
-          await logCommand.execute([content], options);
-        } else {
-          // Run the list command
-          await listCommand.execute([], {});
-        }
+        // Forward to log command with the entered content
+        await logCommand.execute([content], options);
         return;
       }
 

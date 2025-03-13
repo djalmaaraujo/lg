@@ -26,7 +26,7 @@ npm link
 lg setup
 
 # Interactive Mode (Recommended)
-lg  # Opens an interactive prompt
+lg  # Directly prompts for a log entry
 
 # Log an entry directly
 lg "Had a great day today!"
@@ -42,11 +42,6 @@ The CLI now features an interactive mode that makes logging entries easier, espe
 
 ```bash
 $ lg
-? What would you like to do? (Use arrow keys)
-❯ Log a new entry
-  View existing entries
-
-# If you select "Log a new entry":
 ? Enter your log entry: Meeting with Tom at 9am (might be late) #work
 ```
 
