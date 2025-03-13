@@ -267,10 +267,10 @@ const dashboardCommand: Command = {
       });
 
       // Fill the entries box with content - using simple formatting approach
-      let entriesContent = '';
+      let entriesContent = '\n';
       Object.keys(groupedEntries).forEach((date) => {
         // Display date without ** ** formatting, but keep it visually distinct
-        entriesContent += `${date}\n\n`;
+        entriesContent += `  ► ${date}\n\n`;
         groupedEntries[date].forEach((entry) => {
           const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -356,8 +356,7 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content:
-          'Press TAB/e/i to switch views, ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
+        content: 'Press ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
         top: 3,
         left: 0,
       });
