@@ -338,31 +338,24 @@ const dashboardCommand: Command = {
         },
       });
 
-      // Create a text input for quick entry
-      const quickEntryInput = blessed.textbox({
+      // Create a simple box for input instead of a textbox
+      const inputBox = blessed.box({
         parent: quickEntryBox,
         top: 0,
         left: 0,
         height: 3,
         width: '100%',
-        keys: true,
-        mouse: true,
-        inputOnFocus: true,
+        content: '',
         style: {
           fg: 'white',
-          focus: {
-            fg: 'blue',
-            border: {
-              fg: 'green',
-            },
-          },
         },
+        tags: true,
       });
 
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content: 'Press e to switch to entries, i for input, Esc to exit, Ctrl+S to save entry',
+        content: 'Press e for entries view, i for input mode, Esc to exit, Ctrl+S to save entry',
         top: 3,
         left: 0,
       });
@@ -374,7 +367,7 @@ const dashboardCommand: Command = {
         left: 0,
         width: '100%',
         height: 3,
-        content: '{center}Press q to quit, e/i to switch panels, arrow keys to scroll{/center}',
+        content: '{center}Press q to quit, e/i to switch modes, arrow keys to scroll{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -388,49 +381,60 @@ const dashboardCommand: Command = {
         },
       });
 
-      // Simplify to just two panels for navigation
-      const ENTRIES_PANEL = 0;
-      const INPUT_PANEL = 1;
-      let activePanel = ENTRIES_PANEL;
+      // Define modes
+      const ENTRIES_MODE = 0;
+      const INPUT_MODE = 1;
+      let activeMode = ENTRIES_MODE;
 
-      // Function to update focus based on active panel
-      const updateFocus = () => {
+      // Track input state
+      let currentInput = '';
+      let inputCursor = 0;
+
+      // Function to update the display based on active mode
+      const updateDisplay = () => {
         // Reset all labels to default
         entriesBox.setLabel(' Recent Entries ');
         tagsBox.setLabel(' Tags ');
         quickEntryBox.setLabel(' Quick Entry ');
 
-        // Set the focused element's label to indicate focus
-        if (activePanel === ENTRIES_PANEL) {
-          entriesBox.setLabel('{green-fg}[FOCUSED] Recent Entries{/green-fg}');
+        if (activeMode === ENTRIES_MODE) {
+          entriesBox.setLabel('{green-fg}[ACTIVE] Recent Entries{/green-fg}');
           entriesBox.focus();
-        } else if (activePanel === INPUT_PANEL) {
-          quickEntryBox.setLabel('{green-fg}[FOCUSED] Quick Entry{/green-fg}');
-          quickEntryInput.focus();
+          inputBox.setContent(currentInput);
+        } else if (activeMode === INPUT_MODE) {
+          quickEntryBox.setLabel('{green-fg}[ACTIVE] Quick Entry{/green-fg}');
+
+          // Show cursor in input box
+          const beforeCursor = currentInput.substring(0, inputCursor);
+          const atCursor = currentInput.substring(inputCursor, inputCursor + 1) || ' ';
+          const afterCursor = currentInput.substring(inputCursor + 1);
+
+          inputBox.setContent(beforeCursor + '{inverse}' + atCursor + '{/inverse}' + afterCursor);
+
+          // We don't call focus on any element in input mode
         }
 
         screen.render();
       };
 
-      // Direct key for entries panel
+      // Direct key for entries mode
       screen.key('e', () => {
-        activePanel = ENTRIES_PANEL;
-        updateFocus();
+        activeMode = ENTRIES_MODE;
+        updateDisplay();
       });
 
-      // Direct key for input panel
+      // Direct key for input mode
       screen.key('i', () => {
-        activePanel = INPUT_PANEL;
-        updateFocus();
+        activeMode = INPUT_MODE;
+        updateDisplay();
       });
 
       // Handle escape and q to exit
       screen.key(['escape', 'q', 'C-c'], (_, key) => {
-        // If input is focused, blur it first on Escape
-        if (activePanel === INPUT_PANEL && key.name === 'escape') {
-          // Switch focus to entries box
-          activePanel = ENTRIES_PANEL;
-          updateFocus();
+        // If in input mode, switch to entries mode on Escape
+        if (activeMode === INPUT_MODE && key.name === 'escape') {
+          activeMode = ENTRIES_MODE;
+          updateDisplay();
           return;
         }
 
@@ -440,105 +444,138 @@ const dashboardCommand: Command = {
         return process.exit(0);
       });
 
-      // Focus on input when Enter is pressed (only if not already on input)
+      // Focus on input when Enter is pressed (if in entries mode)
       screen.key('enter', () => {
-        if (activePanel !== INPUT_PANEL) {
-          activePanel = INPUT_PANEL;
-          updateFocus();
+        if (activeMode === ENTRIES_MODE) {
+          activeMode = INPUT_MODE;
+          updateDisplay();
+        } else if (activeMode === INPUT_MODE) {
+          // In input mode, Enter adds a newline
+          currentInput += '\n';
+          inputCursor = currentInput.length;
+          updateDisplay();
         }
+      });
+
+      // Handle input in INPUT_MODE
+      screen.on('keypress', (ch, key) => {
+        if (activeMode !== INPUT_MODE || !key) return;
+
+        // Handle special keys
+        if (key.name === 'backspace') {
+          if (inputCursor > 0) {
+            currentInput =
+              currentInput.substring(0, inputCursor - 1) + currentInput.substring(inputCursor);
+            inputCursor--;
+          }
+        } else if (key.name === 'delete') {
+          currentInput =
+            currentInput.substring(0, inputCursor) + currentInput.substring(inputCursor + 1);
+        } else if (key.name === 'left') {
+          if (inputCursor > 0) inputCursor--;
+        } else if (key.name === 'right') {
+          if (inputCursor < currentInput.length) inputCursor++;
+        } else if (key.name === 'home') {
+          inputCursor = 0;
+        } else if (key.name === 'end') {
+          inputCursor = currentInput.length;
+        } else if (!key.ctrl && !key.meta && ch && ch.length === 1) {
+          // Regular character input
+          currentInput =
+            currentInput.substring(0, inputCursor) + ch + currentInput.substring(inputCursor);
+          inputCursor++;
+        }
+
+        updateDisplay();
       });
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        if (activePanel === INPUT_PANEL) {
-          const content = quickEntryInput.getValue();
-          if (content.trim()) {
-            try {
-              // Add new entry
-              const newEntry: LogEntry = {
-                timestamp: new Date().toISOString(),
-                content: content.trim(),
-              };
+        if (activeMode === INPUT_MODE && currentInput.trim()) {
+          try {
+            // Add new entry
+            const newEntry: LogEntry = {
+              timestamp: new Date().toISOString(),
+              content: currentInput.trim(),
+            };
 
-              entries.unshift(newEntry);
-              await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
+            entries.unshift(newEntry);
+            await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
-              // Update UI
-              quickEntryInput.clearValue();
+            // Clear input
+            currentInput = '';
+            inputCursor = 0;
 
-              // Refresh the entries display - using the same simple formatting approach
-              let updatedEntriesContent = '';
-              const updatedGroupedEntries = groupEntriesByDate(entries);
-              Object.keys(updatedGroupedEntries).forEach((date) => {
-                updatedEntriesContent += `${date}\n\n`;
-                updatedGroupedEntries[date].forEach((entry) => {
-                  const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
-                  updatedEntriesContent += `  [${time}] ${entry.content}\n`;
+            // Refresh the entries display
+            let updatedEntriesContent = '';
+            const updatedGroupedEntries = groupEntriesByDate(entries);
+            Object.keys(updatedGroupedEntries).forEach((date) => {
+              updatedEntriesContent += `${date}\n\n`;
+              updatedGroupedEntries[date].forEach((entry) => {
+                const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
                 });
-                updatedEntriesContent += '\n';
+                updatedEntriesContent += `  [${time}] ${entry.content}\n`;
               });
-              entriesBox.setContent(updatedEntriesContent);
+              updatedEntriesContent += '\n';
+            });
+            entriesBox.setContent(updatedEntriesContent);
 
-              screen.render();
-
-              // Show success message
-              const successBox = blessed.message({
-                parent: screen,
-                top: 'center',
-                left: 'center',
-                width: '50%',
-                height: 5,
-                content: 'Entry added successfully!',
+            // Show success message
+            const successBox = blessed.message({
+              parent: screen,
+              top: 'center',
+              left: 'center',
+              width: '50%',
+              height: 5,
+              content: 'Entry added successfully!',
+              border: {
+                type: 'line',
+              },
+              style: {
+                fg: 'green',
                 border: {
-                  type: 'line',
-                },
-                style: {
                   fg: 'green',
-                  border: {
-                    fg: 'green',
-                  },
                 },
-              });
-              successBox.display('Entry added successfully!', 3, () => {
-                screen.render();
-              });
-            } catch (error) {
-              // Show error message
-              const errorBox = blessed.message({
-                parent: screen,
-                top: 'center',
-                left: 'center',
-                width: '50%',
-                height: 5,
-                content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            });
+            successBox.display('Entry added successfully!', 3, () => {
+              updateDisplay();
+            });
+          } catch (error) {
+            // Show error message
+            const errorBox = blessed.message({
+              parent: screen,
+              top: 'center',
+              left: 'center',
+              width: '50%',
+              height: 5,
+              content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              border: {
+                type: 'line',
+              },
+              style: {
+                fg: 'red',
                 border: {
-                  type: 'line',
-                },
-                style: {
                   fg: 'red',
-                  border: {
-                    fg: 'red',
-                  },
                 },
-              });
-              errorBox.display(
-                `Error: ${error instanceof Error ? error.message : String(error)}`,
-                3,
-                () => {
-                  screen.render();
-                }
-              );
-            }
+              },
+            });
+            errorBox.display(
+              `Error: ${error instanceof Error ? error.message : String(error)}`,
+              3,
+              () => {
+                updateDisplay();
+              }
+            );
           }
         }
       });
 
-      // Initial focus on entries box
-      activePanel = ENTRIES_PANEL;
-      updateFocus();
+      // Initial mode is entries
+      activeMode = ENTRIES_MODE;
+      updateDisplay();
     } catch (error) {
       logger.error(
         `Error displaying dashboard: ${error instanceof Error ? error.message : String(error)}`
