@@ -2,7 +2,7 @@
 // src/index.ts
 import { Command as CommanderCommand } from 'commander';
 import { getCommands, getDefaultCommand } from './commands/index.js';
-import { logger } from './utils/logger.js';
+import { logger, initLogger } from './utils/logger.js';
 
 /**
  * Main CLI program
@@ -17,6 +17,9 @@ program.name('lg').description('A life logger CLI tool').version('0.1.0');
  */
 async function init(): Promise<void> {
   try {
+    // Initialize logger to load debug configuration
+    await initLogger();
+
     // Register commands
     const commands = getCommands();
 

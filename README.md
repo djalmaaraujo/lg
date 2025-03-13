@@ -164,6 +164,27 @@ lgl Meeting with Tom at 9am (might be late) #work
 - `list` or `ls`: List all logged entries (use `--sync` flag to force full sync)
 - `remove` or `rm`: Remove log entries
 - `dashboard` or `dash`: Display interactive dashboard
+- `debug` or `dbg`: Enable or disable debug logging
+
+### Debug Command
+
+The debug command allows you to control the verbosity of the CLI's logging:
+
+```bash
+# Show current debug status
+lg debug
+
+# Enable debug logging
+lg debug --enable
+
+# Disable debug logging
+lg debug --disable
+
+# Show current debug status
+lg debug --status
+```
+
+When debug logging is enabled, you'll see detailed information about operations like GitHub Gist synchronization, file operations, and more. This can be helpful for troubleshooting issues or understanding how the CLI works internally.
 
 ## License
 

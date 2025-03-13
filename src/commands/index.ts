@@ -5,6 +5,7 @@ import listCommand from './list.js';
 import defaultCommand from './default.js';
 import removeCommand from './remove.js';
 import dashboardCommand from './dashboard.js';
+import debugCommand from './debug.js';
 
 /**
  * Registry of available commands
@@ -60,4 +61,5 @@ registerCommand(logCommand);
 registerCommand(listCommand);
 registerCommand(removeCommand);
 registerCommand(dashboardCommand);
+registerCommand(debugCommand);
 registerCommand(defaultCommand);
