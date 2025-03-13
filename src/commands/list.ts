@@ -95,21 +95,21 @@ const listCommand: Command = {
 
       if (entries.length === 0) {
         logger.info('No entries found. Start logging with: lg "Your message here"');
-        return;
       }
 
       // If sync option is specified and gist sync is configured, perform a full sync
       if (options.sync && (await isGistSyncConfigured())) {
-        logger.info('Syncing with remote storage...');
+        logger.debug('Syncing with remote storage...');
         entries = await performFullSync(entries);
 
         // Save the updated entries back to the file
         await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
-        logger.info('Sync complete.');
+        logger.debug('Sync complete.');
       } else {
         // Otherwise, trigger a background sync
         if (await isGistSyncConfigured()) {
           syncWithGistInBackground(entries);
+          logger.debug('Syncing with remote storage...');
         }
       }
 
