@@ -3,6 +3,7 @@ import setupCommand from './setup.js';
 import logCommand from './log.js';
 import listCommand from './list.js';
 import defaultCommand from './default.js';
+import removeCommand from './remove.js';
 
 /**
  * Registry of available commands
@@ -56,4 +57,5 @@ export function getDefaultCommand(): Command {
 registerCommand(setupCommand);
 registerCommand(logCommand);
 registerCommand(listCommand);
-registerCommand(defaultCommand); 
+registerCommand(removeCommand);
+registerCommand(defaultCommand);
