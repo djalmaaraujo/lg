@@ -68,7 +68,7 @@ const listCommand: Command = {
     },
     {
       flags: '-r, --reverse',
-      description: 'Display entries in reverse order (oldest first)',
+      description: 'Display entries in reverse order (newest first)',
     },
   ],
 
@@ -93,9 +93,11 @@ const listCommand: Command = {
       const groupedEntries = groupEntriesByDate(entries);
 
       // Get dates and sort them
+      // By default, sort dates in ascending order (oldest first)
+      // If reverse option is specified, sort in descending order (newest first)
       let dates = Object.keys(groupedEntries);
       dates.sort((a, b) => {
-        return options.reverse ? a.localeCompare(b) : b.localeCompare(a);
+        return options.reverse ? b.localeCompare(a) : a.localeCompare(b);
       });
 
       // Apply limit if specified
