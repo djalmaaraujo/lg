@@ -269,8 +269,8 @@ const dashboardCommand: Command = {
       // Fill the entries box with content - using simple formatting approach
       let entriesContent = '';
       Object.keys(groupedEntries).forEach((date) => {
-        // Use a simpler approach for bold text - asterisks instead of ANSI codes
-        entriesContent += `** ${date} **\n\n`;
+        // Display date without ** ** formatting, but keep it visually distinct
+        entriesContent += `${date}\n\n`;
         groupedEntries[date].forEach((entry) => {
           const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -294,6 +294,12 @@ const dashboardCommand: Command = {
           type: 'line',
         },
         label: ' Tags ',
+        padding: {
+          left: 2,
+          right: 2,
+          top: 1,
+          bottom: 1,
+        },
         style: {
           fg: 'white',
           border: {
@@ -412,7 +418,7 @@ const dashboardCommand: Command = {
             let updatedEntriesContent = '';
             const updatedGroupedEntries = groupEntriesByDate(entries);
             Object.keys(updatedGroupedEntries).forEach((date) => {
-              updatedEntriesContent += `** ${date} **\n\n`;
+              updatedEntriesContent += `${date}\n\n`;
               updatedGroupedEntries[date].forEach((entry) => {
                 const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
                   hour: '2-digit',
@@ -475,6 +481,33 @@ const dashboardCommand: Command = {
             );
           }
         }
+      });
+
+      // Add navigation between panels with arrow keys
+      screen.key(['up', 'down', 'left', 'right'], (_, key) => {
+        const currentFocus = screen.focused;
+
+        if (key.name === 'left') {
+          if (currentFocus === entriesBox) {
+            tagsBox.focus();
+          } else if (currentFocus === quickEntryInput) {
+            entriesBox.focus();
+          }
+        } else if (key.name === 'right') {
+          if (currentFocus === tagsBox) {
+            entriesBox.focus();
+          }
+        } else if (key.name === 'up') {
+          if (currentFocus === quickEntryInput) {
+            entriesBox.focus();
+          }
+        } else if (key.name === 'down') {
+          if (currentFocus === entriesBox || currentFocus === tagsBox) {
+            quickEntryInput.focus();
+          }
+        }
+
+        screen.render();
       });
 
       // Render the screen
