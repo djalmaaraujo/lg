@@ -49,26 +49,34 @@ lg "Meeting with Tom at 9am (might be late) #work"
 
 This is because shell interpreters like bash and zsh process special characters before passing arguments to the CLI.
 
-For the best experience with special characters, add this function to your shell configuration file:
+### Important Note for zsh Users
+
+If you're using zsh (the default shell on macOS) and experiencing issues with parentheses, you need to add this function to your `~/.zshrc` file:
 
 ```bash
-# Add this to your ~/.zshrc or ~/.bashrc file
+# Add this to your ~/.zshrc file
 function lgl() {
   if [ $# -eq 0 ]; then
     lg
   else
-    lg log "$*"
+    lg log "${(j: :)@}"
   fi
 }
 ```
 
-Then you can use `lgl` for logging entries with special characters:
+Then source your `.zshrc` file:
+
+```bash
+source ~/.zshrc
+```
+
+Now you can use `lgl` for logging entries with special characters:
 
 ```bash
 lgl Meeting with Tom at 9am (might be late) #work
 ```
 
-This function will automatically pass your entire message to the `lg log` command, preserving all special characters.
+This function will properly handle special characters in zsh.
 
 ## Commands
 

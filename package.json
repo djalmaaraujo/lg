@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "bin": {
     "lg": "./dist/index.js",
-    "lgl": "./bin/lgl"
+    "lgl": "./bin/lgl.js"
   },
   "scripts": {
     "start": "node dist/index.js",
