@@ -73,7 +73,7 @@ async function init(): Promise<void> {
     // Add help information
     program.addHelpText(
       'after',
-      '\nExamples:\n  $ lg setup\n  $ lg "Had a great day today!"\n  $ lg log "Learned something new"\n  $ lg - Show all entries'
+      '\nExamples:\n  $ lg setup\n  $ lg "Had a great day today!"\n  $ lg log "Learned something new"\n  $ lg - Show all entries\n\nNote: Always use quotes when logging entries with special characters like #, !, &, etc.'
     );
 
     // Parse command line arguments

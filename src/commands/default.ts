@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { isSetupComplete } from './setup.js';
 import logCommand from './log.js';
 import listCommand from './list.js';
+import chalk from 'chalk';
 
 /**
  * Default command implementation
@@ -26,6 +27,37 @@ const defaultCommand: Command = {
       if (args.length === 0) {
         await listCommand.execute([], {});
         return;
+      }
+
+      // Check if the arguments might contain special characters that need quotes
+      const joinedArgs = args.join(' ');
+      const specialChars = [
+        '#',
+        '!',
+        '&',
+        '|',
+        ';',
+        '<',
+        '>',
+        '(',
+        ')',
+        '{',
+        '}',
+        '[',
+        ']',
+        '$',
+        '`',
+        '\\',
+      ];
+      const mightHaveSpecialChars = specialChars.some((char) => joinedArgs.includes(char));
+
+      if (mightHaveSpecialChars) {
+        logger.info(
+          chalk.yellow(
+            "Tip: Your entry contains special characters. If you're missing part of your text, try using quotes:"
+          )
+        );
+        logger.info(chalk.cyan(`lg "${joinedArgs}"`));
       }
 
       // Forward to log command

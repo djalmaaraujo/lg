@@ -4,6 +4,7 @@ import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import listCommand from './list.js';
+import chalk from 'chalk';
 
 /**
  * Add a log entry to the storage file
@@ -70,6 +71,36 @@ const logCommand: Command = {
         logger.error('Please provide a message to log.');
         logger.info('Usage: lg log "Your message here"');
         return;
+      }
+
+      // Check if the content might contain special characters that need quotes
+      const specialChars = [
+        '#',
+        '!',
+        '&',
+        '|',
+        ';',
+        '<',
+        '>',
+        '(',
+        ')',
+        '{',
+        '}',
+        '[',
+        ']',
+        '$',
+        '`',
+        '\\',
+      ];
+      const mightHaveSpecialChars = specialChars.some((char) => content.includes(char));
+
+      if (mightHaveSpecialChars) {
+        logger.info(
+          chalk.yellow(
+            "Tip: Your entry contains special characters. If you're missing part of your text, try using quotes:"
+          )
+        );
+        logger.info(chalk.cyan(`lg log "${content}"`));
       }
 
       // Add the log entry with optional custom date
