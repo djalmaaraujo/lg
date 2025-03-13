@@ -36,19 +36,19 @@ export const logger = createLogger();
  */
 export function log(level: LogLevel, message: string): void {
   switch (level) {
-    case LogLevel.DEBUG:
-      logger.debug(message);
-      break;
-    case LogLevel.INFO:
-      logger.info(message);
-      break;
-    case LogLevel.WARN:
-      logger.warn(message);
-      break;
-    case LogLevel.ERROR:
-      logger.error(message);
-      break;
-    default:
-      logger.info(message);
+  case LogLevel.DEBUG:
+    logger.debug(message);
+    break;
+  case LogLevel.INFO:
+    logger.info(message);
+    break;
+  case LogLevel.WARN:
+    logger.warn(message);
+    break;
+  case LogLevel.ERROR:
+    logger.error(message);
+    break;
+  default:
+    logger.info(message);
   }
 } 

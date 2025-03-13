@@ -153,7 +153,7 @@ const dashboardCommand: Command = {
       // Extract tags
       const tags = extractTags(entries);
 
-      // Create a screen object
+      // Create a screen object with safer terminal options
       const screen = blessed.screen({
         smartCSR: true,
         title: 'Life Logger Dashboard',
@@ -163,6 +163,11 @@ const dashboardCommand: Command = {
           blink: true,
           color: 'default',
         },
+        // Force a simpler terminal type to avoid xterm-256color issues
+        terminal: 'xterm',
+        // Disable features that might cause terminal compatibility issues
+        fullUnicode: false,
+        fastCSR: true,
         debug: false,
       });
 
@@ -261,11 +266,11 @@ const dashboardCommand: Command = {
         tags: true, // Ensure tags are enabled
       });
 
-      // Fill the entries box with content
+      // Fill the entries box with content - using simple formatting approach
       let entriesContent = '';
       Object.keys(groupedEntries).forEach((date) => {
-        // Use styling directly with chalk-like syntax instead of {bold} tags
-        entriesContent += `\x1b[1m${date}\x1b[0m\n\n`; // Bold with ANSI escape codes + extra newline
+        // Use a simpler approach for bold text - asterisks instead of ANSI codes
+        entriesContent += `** ${date} **\n\n`;
         groupedEntries[date].forEach((entry) => {
           const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -403,11 +408,11 @@ const dashboardCommand: Command = {
             // Update UI
             quickEntryInput.clearValue();
 
-            // Refresh the entries display
+            // Refresh the entries display - using the same simple formatting approach
             let updatedEntriesContent = '';
             const updatedGroupedEntries = groupEntriesByDate(entries);
             Object.keys(updatedGroupedEntries).forEach((date) => {
-              updatedEntriesContent += `\x1b[1m${date}\x1b[0m\n\n`; // Bold with ANSI escape codes + extra newline
+              updatedEntriesContent += `** ${date} **\n\n`;
               updatedGroupedEntries[date].forEach((entry) => {
                 const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
                   hour: '2-digit',
