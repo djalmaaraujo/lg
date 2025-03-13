@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import listCommand from './list.js';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 
 /**
  * Add a log entry to the storage file
@@ -65,12 +66,30 @@ const logCommand: Command = {
       }
 
       // Get the content from arguments
-      const content = args.join(' ').trim();
+      let content = args.join(' ').trim();
 
+      // If no content is provided, prompt for it interactively
       if (!content) {
-        logger.error('Please provide a message to log.');
-        logger.info('Usage: lg log "Your message here"');
-        return;
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'content',
+            message: 'Enter your log entry:',
+            validate: (input) => {
+              if (input.trim() === '') {
+                return 'Entry cannot be empty';
+              }
+              return true;
+            },
+          },
+        ]);
+
+        content = answers.content.trim();
+
+        if (!content) {
+          logger.error('Log entry cannot be empty.');
+          return;
+        }
       }
 
       // Check if the content might contain special characters that need quotes
@@ -94,13 +113,18 @@ const logCommand: Command = {
       ];
       const mightHaveSpecialChars = specialChars.some((char) => content.includes(char));
 
-      if (mightHaveSpecialChars) {
+      if (mightHaveSpecialChars && args.length > 0) {
         logger.info(
           chalk.yellow(
             "Tip: Your entry contains special characters. If you're missing part of your text, try using quotes:"
           )
         );
         logger.info(chalk.cyan(`lg log "${content}"`));
+        logger.info(
+          chalk.green(
+            "Or simply run 'lg' without arguments to use the interactive prompt, which handles special characters automatically."
+          )
+        );
       }
 
       // Add the log entry with optional custom date

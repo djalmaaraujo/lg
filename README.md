@@ -25,23 +25,36 @@ npm link
 # Initialize the CLI
 lg setup
 
-# Log an entry
+# Interactive Mode (Recommended)
+lg  # Opens an interactive prompt
+
+# Log an entry directly
 lg "Had a great day today!"
 lg log "Learned something new"
 
 # List all entries
 lg list
-lg  # Shortcut for lg list
-
-# Remove entries
-lg rm  # Remove entries from the most recent day
-lg rm -d  # Select a date to remove entries from
-lg rm -l  # Remove the last entry
 ```
+
+## Interactive Mode
+
+The CLI now features an interactive mode that makes logging entries easier, especially when dealing with special characters:
+
+```bash
+$ lg
+? What would you like to do? (Use arrow keys)
+❯ Log a new entry
+  View existing entries
+
+# If you select "Log a new entry":
+? Enter your log entry: Meeting with Tom at 9am (might be late) #work
+```
+
+This interactive mode automatically handles special characters without requiring quotes or escaping.
 
 ## Handling Special Characters
 
-When logging entries with special characters like `#`, `!`, `&`, `()`, etc., you **must** use quotes:
+When logging entries directly (non-interactive mode) with special characters like `#`, `!`, `&`, `()`, etc., you **must** use quotes:
 
 ```bash
 lg "Meeting with Tom at 9am (might be late) #work"
@@ -49,9 +62,15 @@ lg "Meeting with Tom at 9am (might be late) #work"
 
 This is because shell interpreters like bash and zsh process special characters before passing arguments to the CLI.
 
+For the easiest experience with special characters, use the interactive mode by simply typing `lg` without arguments.
+
 ### Important Note for zsh Users
 
-If you're using zsh (the default shell on macOS) and experiencing issues with parentheses, you need to add this function to your `~/.zshrc` file:
+If you're using zsh (the default shell on macOS) and experiencing issues with parentheses, you can either:
+
+1. Use the interactive mode by typing `lg` without arguments (recommended)
+2. Use quotes around your entry: `lg "Your entry with (special) characters"`
+3. Add this function to your `~/.zshrc` file:
 
 ```bash
 # Add this to your ~/.zshrc file
@@ -75,8 +94,6 @@ Now you can use `lgl` for logging entries with special characters:
 ```bash
 lgl Meeting with Tom at 9am (might be late) #work
 ```
-
-This function will properly handle special characters in zsh.
 
 ## Commands
 
