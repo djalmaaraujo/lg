@@ -4,6 +4,7 @@ import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import blessed from 'blessed';
+import { syncWithGist, isGistSyncConfigured } from '../utils/gistSync.js';
 
 /**
  * Group entries by date
@@ -524,6 +525,19 @@ const dashboardCommand: Command = {
             entries.unshift(newEntry);
             await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
+            // Sync with GitHub Gist if configured
+            if (await isGistSyncConfigured()) {
+              try {
+                await syncWithGist(entries);
+                logger.debug('Synced entries with GitHub Gist from dashboard');
+              } catch (syncError) {
+                logger.error(
+                  `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
+                );
+                // Continue even if sync fails
+              }
+            }
+
             // Clear input
             currentInput = '';
             inputCursor = 0;
@@ -532,7 +546,7 @@ const dashboardCommand: Command = {
             let updatedEntriesContent = '';
             const updatedGroupedEntries = groupEntriesByDate(entries);
             Object.keys(updatedGroupedEntries).forEach((date) => {
-              updatedEntriesContent += `${date}\n\n`;
+              updatedEntriesContent += `  ► ${date}\n\n`;
               updatedGroupedEntries[date].forEach((entry) => {
                 const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
                   hour: '2-digit',

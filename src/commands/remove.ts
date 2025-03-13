@@ -6,6 +6,7 @@ import { LogEntry, Storage } from '../types/log.js';
 import { logger } from '../utils/logger.js';
 import { isSetupComplete, STORAGE_FILE } from './setup.js';
 import listCommand from './list.js';
+import { syncWithGist, isGistSyncConfigured } from '../utils/gistSync.js';
 
 /**
  * Format a date string to display only the date (DD/MM/YYYY)
@@ -216,6 +217,19 @@ async function handleDateSelection(
     // Write the updated entries back to the file
     await fs.writeFile(STORAGE_FILE, JSON.stringify(updatedEntries, null, 2));
 
+    // Sync with GitHub Gist if configured
+    if (await isGistSyncConfigured()) {
+      try {
+        await syncWithGist(updatedEntries);
+        logger.debug('Synced entries with GitHub Gist after removing all entries for a date');
+      } catch (syncError) {
+        logger.error(
+          `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
+        );
+        // Continue even if sync fails
+      }
+    }
+
     logger.info(
       `${chalk.green('Success:')} Removed all ${entriesForDate.length} entries for ${formatDate(
         selectedDate
@@ -233,6 +247,19 @@ async function handleDateSelection(
 
   // Write the updated entries back to the file
   await fs.writeFile(STORAGE_FILE, JSON.stringify(updatedEntries, null, 2));
+
+  // Sync with GitHub Gist if configured
+  if (await isGistSyncConfigured()) {
+    try {
+      await syncWithGist(updatedEntries);
+      logger.debug('Synced entries with GitHub Gist after removing an entry');
+    } catch (syncError) {
+      logger.error(
+        `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
+      );
+      // Continue even if sync fails
+    }
+  }
 
   logger.info(
     `${chalk.green('Success:')} Removed entry: ${chalk.yellow(
@@ -277,6 +304,19 @@ async function removeLastEntry(entries: LogEntry[]): Promise<void> {
 
   // Write the updated entries back to the file
   await fs.writeFile(STORAGE_FILE, JSON.stringify(updatedEntries, null, 2));
+
+  // Sync with GitHub Gist if configured
+  if (await isGistSyncConfigured()) {
+    try {
+      await syncWithGist(updatedEntries);
+      logger.debug('Synced entries with GitHub Gist after removing the last entry');
+    } catch (syncError) {
+      logger.error(
+        `Failed to sync with GitHub Gist: ${syncError instanceof Error ? syncError.message : String(syncError)}`
+      );
+      // Continue even if sync fails
+    }
+  }
 
   logger.info(
     `${chalk.green('Success:')} Removed entry: ${chalk.yellow(

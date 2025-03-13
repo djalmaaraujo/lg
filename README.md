@@ -68,6 +68,39 @@ The dashboard provides:
 
 Navigate with arrow keys, press Enter to focus on the quick entry form, and Ctrl+S to save a new entry. Press q to quit.
 
+## GitHub Gist Synchronization
+
+Life Logger CLI supports synchronizing your entries across multiple devices using GitHub Gists:
+
+```bash
+# Set up GitHub Gist sync during initial setup
+lg setup
+
+# Or add Gist sync to an existing installation
+lg setup
+```
+
+### Setting Up Gist Sync
+
+1. You'll need a GitHub Personal Access Token with the "gist" scope
+2. Create one at: https://github.com/settings/tokens
+3. When prompted during setup, choose "yes" to set up GitHub Gist synchronization
+4. Paste your GitHub Personal Access Token when prompted
+
+### How Sync Works
+
+- Every time you add or remove entries, they are automatically synced with your GitHub Gist
+- If you use Life Logger on multiple devices with the same GitHub account, your entries will be synchronized
+- When setting up a new device, if the Gist already contains entries, they will be imported automatically
+- Sync happens automatically in the background - no manual action required
+
+### Benefits of Gist Sync
+
+- **Backup**: Your entries are safely stored in your GitHub account
+- **Multi-device**: Access and update your logs from any device
+- **Private**: Gists are created as private by default
+- **Seamless**: Sync happens automatically whenever you add or remove entries
+
 ## Handling Special Characters
 
 When logging entries directly (non-interactive mode) with special characters like `#`, `!`, `&`, `()`, etc., you **must** use quotes:
@@ -113,7 +146,7 @@ lgl Meeting with Tom at 9am (might be late) #work
 
 ## Commands
 
-- `setup`: Initialize the CLI
+- `setup`: Initialize the CLI and configure GitHub Gist sync
 - `log` or `add`: Log a life entry
 - `list` or `ls`: List all logged entries
 - `remove` or `rm`: Remove log entries
