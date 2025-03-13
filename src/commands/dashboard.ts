@@ -250,9 +250,10 @@ const dashboardCommand: Command = {
             inverse: true,
           },
         },
-        keys: true,
-        vi: true,
-        mouse: true,
+        // Remove keys, vi, and mouse to prevent conflicts
+        keys: false,
+        vi: false,
+        mouse: false,
         border: {
           type: 'line',
         },
@@ -261,6 +262,11 @@ const dashboardCommand: Command = {
           fg: 'white',
           border: {
             fg: 'white',
+          },
+          focus: {
+            border: {
+              fg: 'green',
+            },
           },
         },
         tags: true, // Ensure tags are enabled
@@ -290,6 +296,8 @@ const dashboardCommand: Command = {
         width: '30%',
         height: '30%',
         scrollable: true,
+        // Remove keys to prevent conflicts
+        keys: false,
         border: {
           type: 'line',
         },
@@ -304,6 +312,11 @@ const dashboardCommand: Command = {
           fg: 'white',
           border: {
             fg: 'white',
+          },
+          focus: {
+            border: {
+              fg: 'green',
+            },
           },
         },
         tags: true, // Ensure tags are enabled
@@ -351,6 +364,9 @@ const dashboardCommand: Command = {
           fg: 'white',
           focus: {
             fg: 'blue',
+            border: {
+              fg: 'green',
+            },
           },
         },
       });
@@ -358,7 +374,8 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content: 'Press Enter to focus input, Esc to blur, Ctrl+S to save entry',
+        content:
+          'Press Enter to focus input, Esc to blur, Ctrl+S to save entry, Arrow keys to navigate',
         top: 3,
         left: 0,
       });
@@ -384,153 +401,169 @@ const dashboardCommand: Command = {
         },
       });
 
-      // Handle key events
-      screen.key(['escape', 'q', 'C-c'], () => {
-        // If input is focused, blur it first on Escape
-        if (screen.focused === quickEntryInput) {
+      // Track the currently focused element
+      let currentFocus = 'entries'; // 'entries', 'tags', or 'input'
+
+      // Function to update focus based on current state
+      const updateFocus = () => {
+        if (currentFocus === 'entries') {
+          entriesBox.style.border.fg = 'green';
+          tagsBox.style.border.fg = 'white';
+          quickEntryBox.style.border.fg = 'white';
           entriesBox.focus();
-          screen.render();
+        } else if (currentFocus === 'tags') {
+          entriesBox.style.border.fg = 'white';
+          tagsBox.style.border.fg = 'green';
+          quickEntryBox.style.border.fg = 'white';
+          tagsBox.focus();
+        } else if (currentFocus === 'input') {
+          entriesBox.style.border.fg = 'white';
+          tagsBox.style.border.fg = 'white';
+          quickEntryBox.style.border.fg = 'green';
+          quickEntryInput.focus();
+        }
+        screen.render();
+      };
+
+      // Handle all key events in a single handler
+      screen.key(['escape', 'q', 'C-c', 'enter', 'up', 'down', 'left', 'right'], (_, key) => {
+        // Handle exit keys
+        if (key.name === 'escape' || key.name === 'q' || (key.ctrl && key.name === 'c')) {
+          // If input is focused, blur it first on Escape
+          if (currentFocus === 'input' && key.name === 'escape') {
+            currentFocus = 'entries';
+            updateFocus();
+            return;
+          }
+
+          // Otherwise, exit the dashboard
+          screen.destroy();
+          isScreenDestroyed = true;
+          return process.exit(0);
+        }
+
+        // Handle Enter key to focus input
+        if (key.name === 'enter' && currentFocus !== 'input') {
+          currentFocus = 'input';
+          updateFocus();
           return;
         }
 
-        // Otherwise, exit the dashboard
-        screen.destroy();
-        isScreenDestroyed = true;
-        return process.exit(0);
-      });
-
-      // Focus on input when Enter is pressed
-      screen.key('enter', () => {
-        quickEntryInput.focus();
+        // Handle navigation keys
+        if (key.name === 'left') {
+          if (currentFocus === 'entries') {
+            currentFocus = 'tags';
+            updateFocus();
+          }
+        } else if (key.name === 'right') {
+          if (currentFocus === 'tags') {
+            currentFocus = 'entries';
+            updateFocus();
+          }
+        } else if (key.name === 'up') {
+          if (currentFocus === 'input') {
+            currentFocus = 'entries';
+            updateFocus();
+          }
+        } else if (key.name === 'down') {
+          if (currentFocus === 'entries' || currentFocus === 'tags') {
+            currentFocus = 'input';
+            updateFocus();
+          }
+        }
       });
 
       // Save entry when Ctrl+S is pressed
       screen.key('C-s', async () => {
-        const content = quickEntryInput.getValue();
-        if (content.trim()) {
-          try {
-            // Add new entry
-            const newEntry: LogEntry = {
-              timestamp: new Date().toISOString(),
-              content: content.trim(),
-            };
+        if (currentFocus === 'input') {
+          const content = quickEntryInput.getValue();
+          if (content.trim()) {
+            try {
+              // Add new entry
+              const newEntry: LogEntry = {
+                timestamp: new Date().toISOString(),
+                content: content.trim(),
+              };
 
-            entries.unshift(newEntry);
-            await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
+              entries.unshift(newEntry);
+              await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
-            // Update UI
-            quickEntryInput.clearValue();
+              // Update UI
+              quickEntryInput.clearValue();
 
-            // Refresh the entries display - using the same simple formatting approach
-            let updatedEntriesContent = '';
-            const updatedGroupedEntries = groupEntriesByDate(entries);
-            Object.keys(updatedGroupedEntries).forEach((date) => {
-              updatedEntriesContent += `${date}\n\n`;
-              updatedGroupedEntries[date].forEach((entry) => {
-                const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
+              // Refresh the entries display - using the same simple formatting approach
+              let updatedEntriesContent = '';
+              const updatedGroupedEntries = groupEntriesByDate(entries);
+              Object.keys(updatedGroupedEntries).forEach((date) => {
+                updatedEntriesContent += `${date}\n\n`;
+                updatedGroupedEntries[date].forEach((entry) => {
+                  const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                  updatedEntriesContent += `  [${time}] ${entry.content}\n`;
                 });
-                updatedEntriesContent += `  [${time}] ${entry.content}\n`;
+                updatedEntriesContent += '\n';
               });
-              updatedEntriesContent += '\n';
-            });
-            entriesBox.setContent(updatedEntriesContent);
+              entriesBox.setContent(updatedEntriesContent);
 
-            screen.render();
-
-            // Show success message
-            const successBox = blessed.message({
-              parent: screen,
-              top: 'center',
-              left: 'center',
-              width: '50%',
-              height: 5,
-              content: 'Entry added successfully!',
-              border: {
-                type: 'line',
-              },
-              style: {
-                fg: 'green',
-                border: {
-                  fg: 'green',
-                },
-              },
-            });
-            successBox.display('Entry added successfully!', 3, () => {
               screen.render();
-            });
-          } catch (error) {
-            // Show error message
-            const errorBox = blessed.message({
-              parent: screen,
-              top: 'center',
-              left: 'center',
-              width: '50%',
-              height: 5,
-              content: `Error: ${error instanceof Error ? error.message : String(error)}`,
-              border: {
-                type: 'line',
-              },
-              style: {
-                fg: 'red',
+
+              // Show success message
+              const successBox = blessed.message({
+                parent: screen,
+                top: 'center',
+                left: 'center',
+                width: '50%',
+                height: 5,
+                content: 'Entry added successfully!',
                 border: {
-                  fg: 'red',
+                  type: 'line',
                 },
-              },
-            });
-            errorBox.display(
-              `Error: ${error instanceof Error ? error.message : String(error)}`,
-              3,
-              () => {
+                style: {
+                  fg: 'green',
+                  border: {
+                    fg: 'green',
+                  },
+                },
+              });
+              successBox.display('Entry added successfully!', 3, () => {
                 screen.render();
-              }
-            );
+              });
+            } catch (error) {
+              // Show error message
+              const errorBox = blessed.message({
+                parent: screen,
+                top: 'center',
+                left: 'center',
+                width: '50%',
+                height: 5,
+                content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                border: {
+                  type: 'line',
+                },
+                style: {
+                  fg: 'red',
+                  border: {
+                    fg: 'red',
+                  },
+                },
+              });
+              errorBox.display(
+                `Error: ${error instanceof Error ? error.message : String(error)}`,
+                3,
+                () => {
+                  screen.render();
+                }
+              );
+            }
           }
         }
       });
 
-      // Completely rewrite the navigation logic to ensure it works properly
-      // Create a function to handle navigation between panels
-      const navigatePanels = (direction: 'up' | 'down' | 'left' | 'right') => {
-        const currentFocus = screen.focused;
-
-        // Define the navigation map
-        if (direction === 'left') {
-          if (currentFocus === entriesBox) {
-            tagsBox.focus();
-          }
-        } else if (direction === 'right') {
-          if (currentFocus === tagsBox) {
-            entriesBox.focus();
-          }
-        } else if (direction === 'up') {
-          if (currentFocus === quickEntryInput) {
-            entriesBox.focus();
-          }
-        } else if (direction === 'down') {
-          if (currentFocus === entriesBox || currentFocus === tagsBox) {
-            quickEntryInput.focus();
-          }
-        }
-
-        screen.render();
-      };
-
-      // Set up individual key handlers for better control
-      screen.key('left', () => navigatePanels('left'));
-      screen.key('right', () => navigatePanels('right'));
-      screen.key('up', () => navigatePanels('up'));
-      screen.key('down', () => navigatePanels('down'));
-
-      // Render the screen
-      screen.render();
-
-      // Focus on the entries box by default - make sure this happens
-      entriesBox.focus();
-
-      // Ensure the input doesn't have focus by explicitly focusing on the entries box
-      screen.render();
+      // Initial focus
+      currentFocus = 'entries';
+      updateFocus();
     } catch (error) {
       logger.error(
         `Error displaying dashboard: ${error instanceof Error ? error.message : String(error)}`
