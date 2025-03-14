@@ -47,28 +47,62 @@ This script will:
 
 ## Usage
 
+### Getting Started
+
 ```bash
-# Initialize the CLI
+# Initialize the CLI and follow the setup prompts
 lg setup
 
+# When asked, enable GitHub Gist sync for cloud storage
+# You'll need a GitHub Personal Access Token with 'gist' scope
+```
+
+### Daily Logging
+
+```bash
 # Interactive Mode (Recommended)
 lg  # Directly prompts for a log entry
 
 # Log an entry directly
 lg "Had a great day today!"
 lg log "Learned something new"
+```
 
-# List all entries
+### Managing Entries
+
+```bash
+# List all entries (uses local storage by default)
 lg list
 
-# Force a full sync with remote storage
+# Force a full sync with GitHub Gist before listing entries
 lg list --sync
 
+# Remove entries
+lg remove
+```
+
+### Advanced Features
+
+```bash
 # View interactive dashboard
 lg dash
 
 # Enable debug logging
 lg debug --enable
+
+# Check sync status
+lg list --sync
+```
+
+### Multi-Device Workflow
+
+```bash
+# On your first device
+lg setup  # Enable GitHub Gist sync during setup
+
+# On additional devices
+lg setup  # Use the same GitHub token
+lg list --sync  # Pull all existing entries from the cloud
 ```
 
 ## Commands
