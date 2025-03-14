@@ -1,8 +1,19 @@
 # Life Logger CLI (lg)
 
-A simple command-line tool for logging daily life events.
+A simple command-line tool for logging daily life events with cloud synchronization, interactive dashboard, and offline support.
+
+## Features
+
+- 📝 **Simple Logging**: Quickly log your daily activities with a simple command
+- 🔄 **Cloud Sync**: Synchronize your logs across devices using GitHub Gists
+- 📊 **Interactive Dashboard**: Visualize and manage your logs with a rich terminal UI
+- 🔌 **Offline Support**: Work seamlessly without internet connection
+- 🔍 **Powerful Search**: Find entries by date, content, or tags
+- 🛠️ **Extensible**: Easy to add new features and commands
 
 ## Installation
+
+### From Source
 
 ```bash
 # Clone the repository
@@ -18,6 +29,21 @@ npm run build
 # Link the CLI globally
 npm link
 ```
+
+### For Development
+
+If you're developing the CLI, you can use the included update script to quickly rebuild and relink the tool:
+
+```bash
+# After making changes to the code
+./update-cli.sh
+```
+
+This script will:
+
+1. Build the project with TypeScript
+2. Unlink any existing global installation
+3. Link the updated package globally
 
 ## Usage
 
@@ -40,11 +66,28 @@ lg list --sync
 
 # View interactive dashboard
 lg dash
+
+# Enable debug logging
+lg debug --enable
 ```
+
+## Commands
+
+### Core Commands
+
+- `setup`: Initialize the CLI and configure GitHub Gist sync
+- `log` or `add`: Log a life entry
+- `list` or `ls`: List all logged entries
+- `remove` or `rm`: Remove log entries
+
+### Advanced Features
+
+- `dashboard` or `dash`: Display interactive dashboard
+- `debug` or `dbg`: Enable or disable debug logging
 
 ## Interactive Mode
 
-The CLI now features an interactive mode that makes logging entries easier, especially when dealing with special characters:
+The CLI features an interactive mode that makes logging entries easier, especially when dealing with special characters:
 
 ```bash
 $ lg
@@ -61,15 +104,23 @@ The CLI includes a rich interactive dashboard for visualizing and managing your 
 $ lg dash
 ```
 
-The dashboard provides:
+### Dashboard Features
 
-- Calendar view showing days with entries
-- List of recent entries
-- Tag statistics
-- Entry statistics
-- Quick entry form for adding new logs
+- **Calendar View**: Shows days with entries highlighted
+- **Recent Entries**: Lists your most recent log entries
+- **Tag Statistics**: Shows most frequently used tags
+- **Entry Statistics**: Displays metrics about your logging habits
+- **Quick Entry Form**: Add new entries directly from the dashboard
 
-Navigate with arrow keys, press Enter to focus on the quick entry form, and Ctrl+S to save a new entry. Press q to quit.
+### Dashboard Navigation
+
+- Use arrow keys to navigate between panels
+- Press 'e' to focus on entries panel
+- Press 'i' to focus on input panel
+- Press ENTER when in input panel to start editing
+- Press ESC to exit editing mode
+- Press Ctrl+S to save a new entry
+- Press q to quit the dashboard
 
 ## GitHub Gist Synchronization
 
@@ -114,6 +165,26 @@ Life Logger works seamlessly offline:
 - **Seamless**: Sync happens automatically in the background
 - **Offline-first**: Works without internet, syncs when connection is available
 
+## Debug Logging
+
+The debug command allows you to control the verbosity of the CLI's logging:
+
+```bash
+# Show current debug status
+lg debug
+
+# Enable debug logging
+lg debug --enable
+
+# Disable debug logging
+lg debug --disable
+
+# Show current debug status
+lg debug --status
+```
+
+When debug logging is enabled, you'll see detailed information about operations like GitHub Gist synchronization, file operations, and more. This can be helpful for troubleshooting issues or understanding how the CLI works internally.
+
 ## Handling Special Characters
 
 When logging entries directly (non-interactive mode) with special characters like `#`, `!`, `&`, `()`, etc., you **must** use quotes:
@@ -157,34 +228,59 @@ Now you can use `lgl` for logging entries with special characters:
 lgl Meeting with Tom at 9am (might be late) #work
 ```
 
-## Commands
+## Development
 
-- `setup`: Initialize the CLI and configure GitHub Gist sync
-- `log` or `add`: Log a life entry
-- `list` or `ls`: List all logged entries (use `--sync` flag to force full sync)
-- `remove` or `rm`: Remove log entries
-- `dashboard` or `dash`: Display interactive dashboard
-- `debug` or `dbg`: Enable or disable debug logging
+### Project Structure
 
-### Debug Command
-
-The debug command allows you to control the verbosity of the CLI's logging:
-
-```bash
-# Show current debug status
-lg debug
-
-# Enable debug logging
-lg debug --enable
-
-# Disable debug logging
-lg debug --disable
-
-# Show current debug status
-lg debug --status
+```
+lg/
+├── src/                    # Source code
+│   ├── index.ts            # Entry point
+│   ├── commands/           # Command implementations
+│   │   ├── index.ts        # Commands registry
+│   │   └── [command].ts    # Individual command files
+│   ├── utils/              # Utility functions
+│   │   ├── logger.ts       # Logging utilities
+│   │   ├── gistSync.ts     # GitHub Gist synchronization
+│   │   └── ...
+│   └── types/              # TypeScript type definitions
+├── dist/                   # Compiled JavaScript (generated)
+├── update-cli.sh           # Development utility script
+├── package.json            # Project metadata and dependencies
+└── README.md               # Project documentation
 ```
 
-When debug logging is enabled, you'll see detailed information about operations like GitHub Gist synchronization, file operations, and more. This can be helpful for troubleshooting issues or understanding how the CLI works internally.
+### Adding a New Command
+
+1. Create a new file in `src/commands/` (e.g., `mycommand.ts`)
+2. Implement the Command interface
+3. Register the command in `src/commands/index.ts`
+4. Run `./update-cli.sh` to build and link the updated CLI
+
+### Deployment
+
+To package the CLI for distribution:
+
+```bash
+# Build the project
+npm run build
+
+# Create a tarball
+npm pack
+
+# The resulting .tgz file can be installed globally with:
+npm install -g lg-0.1.0.tgz
+```
+
+For publishing to npm:
+
+```bash
+# Build the project
+npm run build
+
+# Publish to npm (requires npm account)
+npm publish
+```
 
 ## License
 
