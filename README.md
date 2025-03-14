@@ -158,16 +158,6 @@ $ lg dash
 
 ## GitHub Gist Synchronization
 
-Life Logger CLI supports synchronizing your entries across multiple devices using GitHub Gists:
-
-```bash
-# Set up GitHub Gist sync during initial setup
-lg setup
-
-# Or add Gist sync to an existing installation
-lg setup
-```
-
 ### Setting Up Gist Sync
 
 1. You'll need a GitHub Personal Access Token with the "gist" scope
@@ -230,37 +220,6 @@ lg "Meeting with Tom at 9am (might be late) #work"
 This is because shell interpreters like bash and zsh process special characters before passing arguments to the CLI.
 
 For the easiest experience with special characters, use the interactive mode by simply typing `lg` without arguments.
-
-### Important Note for zsh Users
-
-If you're using zsh (the default shell on macOS) and experiencing issues with parentheses, you can either:
-
-1. Use the interactive mode by typing `lg` without arguments (recommended)
-2. Use quotes around your entry: `lg "Your entry with (special) characters"`
-3. Add this function to your `~/.zshrc` file:
-
-```bash
-# Add this to your ~/.zshrc file
-function lgl() {
-  if [ $# -eq 0 ]; then
-    lg
-  else
-    lg log "${(j: :)@}"
-  fi
-}
-```
-
-Then source your `.zshrc` file:
-
-```bash
-source ~/.zshrc
-```
-
-Now you can use `lgl` for logging entries with special characters:
-
-```bash
-lgl Meeting with Tom at 9am (might be late) #work
-```
 
 ## Development
 
