@@ -27,6 +27,17 @@ interface GistResponse {
   files: {
     [key: string]: GistFile;
   };
+  description?: string;
+}
+
+interface GistListItem {
+  id: string;
+  description?: string;
+  files: {
+    [key: string]: {
+      filename: string;
+    };
+  };
 }
 
 // Track if a sync is currently in progress
@@ -355,6 +366,62 @@ export async function performFullSync(localEntries: Storage): Promise<Storage> {
 }
 
 /**
+ * Find existing Life Logger gist for a user
+ * Searches through all gists for the user and finds one that matches our criteria
+ */
+export async function findExistingLifeLoggerGist(token: string): Promise<string | null> {
+  try {
+    logger.debug('Searching for existing Life Logger gists...');
+    
+    // Check internet connectivity first
+    const isOnline = await isInternetAvailable();
+    if (!isOnline) {
+      logger.debug('No internet connection, cannot search for existing gists');
+      return null;
+    }
+    
+    // Fetch all gists for the user
+    const response = await fetch('https://api.github.com/gists', {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`GitHub API error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+
+    const gists = (await response.json()) as GistListItem[];
+    
+    // Look for a gist that matches our criteria:
+    // 1. Has the description "Life Logger CLI Storage"
+    // 2. Has a file with our specific filename
+    for (const gist of gists) {
+      if (
+        gist.description === 'Life Logger CLI Storage' && 
+        gist.files && 
+        Object.keys(gist.files).includes(GIST_FILENAME)
+      ) {
+        logger.debug(`Found existing Life Logger gist with ID: ${gist.id}`);
+        return gist.id;
+      }
+    }
+    
+    logger.debug('No existing Life Logger gists found');
+    return null;
+  } catch (error) {
+    logger.error(
+      `Failed to find existing gists: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
+}
+
+/**
  * Initialize gist sync during setup
  * This handles the case where remote gist might have entries but local storage is empty
  */
@@ -363,13 +430,24 @@ export async function initializeGistSync(
   localEntries: Storage
 ): Promise<{ entries: Storage; gistId: string }> {
   try {
-    // Check if we already have a gist ID saved
+    // Check if we already have a gist ID saved locally
     const existingConfig = await loadGistConfig();
     let gistId = existingConfig?.gistId;
     let remoteEntries: Storage | null = null;
 
+    // If no local gist ID, try to find an existing Life Logger gist for this token
+    if (!gistId) {
+      const existingGistId = await findExistingLifeLoggerGist(token);
+      if (existingGistId) {
+        gistId = existingGistId;
+        logger.debug(`Found existing Life Logger gist: ${gistId}`);
+      } else {
+        logger.debug('No existing Life Logger gist found');
+      }
+    }
+
+    // If we have a gist ID (either from local config or found via API), try to fetch entries
     if (gistId) {
-      // Try to fetch entries from existing gist
       remoteEntries = await fetchGistEntries(token, gistId);
     }
 
