@@ -729,7 +729,13 @@ const dashboardCommand: Command = {
             bottom: 2,
             left: 3,
             right: 3
-          }
+          },
+          // Ensure the box captures all input
+          input: true,
+          keys: true,
+          mouse: true,
+          // Set a high z-index to ensure it's above other elements
+          zIndex: 100
         }) as CustomBox;
         
         const message = blessed.text({
@@ -868,13 +874,8 @@ const dashboardCommand: Command = {
           // Store current selection state
           const currentSelectedIndex = selectedEntryIndex;
           
-          // Temporarily disable arrow key handling in entries view
-          // Use a safer approach to disable keypress events
-          const originalHandlers: any = {};
-          const keypressListeners = screen.listeners('keypress');
-          keypressListeners.forEach((listener, index) => {
-            originalHandlers[index] = listener;
-          });
+          // Temporarily disable keyboard input for other elements
+          const originalKeypress = screen.listeners('keypress');
           screen.removeAllListeners('keypress');
           
           // Show confirmation dialog
@@ -900,10 +901,39 @@ const dashboardCommand: Command = {
             ? selectedEntry.content.substring(0, 30) + '...' 
             : selectedEntry.content;
             
+          // Create a special keypress handler for the confirmation dialog
+          // that prevents arrow keys from affecting the underlying UI
+          const confirmationKeyHandler = (_ch: string, key: blessed.Widgets.Events.IKeyEventArg) => {
+            // Only allow specific keys for the confirmation dialog
+            // Block all other keys from affecting the underlying UI
+            if (key.name === 'escape' || 
+                key.name === 'return' || 
+                key.name === 'enter' ||
+                key.name === 'tab' ||
+                key.name === 'left' ||
+                key.name === 'right') {
+              // Let these keys be handled by the dialog
+              return true;
+            }
+            
+            // Block all other keys from propagating
+            return false;
+          };
+          
+          // Add the key handler
+          screen.on('keypress', confirmationKeyHandler);
+          
+          // Force focus on the confirmation box
+          confirmBox.focus();
+          screen.render();
+            
           confirmBox.ask(`Are you sure you want to delete this entry?\n\n"${entryPreview}"`, async (err: Error | null, confirmed: boolean) => {
+            // Remove our special key handler
+            screen.removeListener('keypress', confirmationKeyHandler);
+            
             // Restore original keypress handlers
             screen.removeAllListeners('keypress');
-            Object.values(originalHandlers).forEach(handler => {
+            originalKeypress.forEach(handler => {
               screen.on('keypress', handler as (...args: any[]) => void);
             });
             
@@ -952,58 +982,6 @@ const dashboardCommand: Command = {
                     selectedEntryIndex = flatEntries.length - 1;
                   }
                   
-                  // Update the entries display with the latest data
-                  let updatedEntriesContent = '\n';
-                  Object.keys(updatedGroupedEntries).forEach((date) => {
-                    updatedEntriesContent += `  ► ${date}\n\n`;
-                    updatedGroupedEntries[date].forEach((entry) => {
-                      const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      });
-                      let entryLine = `  [${time}] ${entry.content}`;
-                      
-                      // Add edited indicator if the entry has been updated
-                      if (entry.updated_at) {
-                        const updatedDate = new Date(entry.updated_at);
-                        const createdDate = new Date(entry.timestamp);
-                        
-                        const updatedTime = updatedDate.toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        });
-                        
-                        // Check if the update was on a different day than creation
-                        const isSameDay = 
-                          updatedDate.getFullYear() === createdDate.getFullYear() &&
-                          updatedDate.getMonth() === createdDate.getMonth() &&
-                          updatedDate.getDate() === createdDate.getDate();
-                        
-                        if (isSameDay) {
-                          entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
-                        } else {
-                          // Include the date in the edit indicator
-                          const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                          });
-                          entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
-                        }
-                      }
-                      
-                      if (flatEntries.findIndex((e) => e.entry.timestamp === entry.timestamp) === selectedEntryIndex) {
-                        // Create a clean version of the line without the leading spaces for highlighting
-                        const cleanLine = entryLine.trim();
-                        updatedEntriesContent += `  {inverse}${cleanLine}{/inverse}\n`;
-                      } else {
-                        updatedEntriesContent += entryLine + '\n';
-                      }
-                    });
-                    updatedEntriesContent += '\n';
-                  });
-                  entriesBox.setContent(updatedEntriesContent || '\n  No entries found.');
-                  
                   // Show success message
                   const successBox = blessed.message({
                     parent: screen,
@@ -1032,7 +1010,7 @@ const dashboardCommand: Command = {
                   });
                   
                   // Temporarily disable keyboard input for other elements
-                  const originalKeypress = screen.listeners('keypress');
+                  const successKeypress = screen.listeners('keypress');
                   screen.removeAllListeners('keypress');
                   
                   // Add a single keypress handler that only responds to the success box
@@ -1041,7 +1019,7 @@ const dashboardCommand: Command = {
                     successBox.hide();
                     // After the message is closed, restore keyboard handlers
                     screen.removeAllListeners('keypress');
-                    originalKeypress.forEach(listener => {
+                    successKeypress.forEach(listener => {
                       screen.on('keypress', listener as (...args: any[]) => void);
                     });
                     
@@ -1053,14 +1031,13 @@ const dashboardCommand: Command = {
                       activeMode = ENTRY_SELECTION_MODE;
                     }
                     updateDisplay();
-                    screen.render(); // Force a render to refresh the display
                   });
                   
                   successBox.display('Entry deleted successfully!', 3, () => {
                     // This will only run if the timeout expires without a key press
                     // After the message is closed, restore keyboard handlers
                     screen.removeAllListeners('keypress');
-                    originalKeypress.forEach(listener => {
+                    successKeypress.forEach(listener => {
                       screen.on('keypress', listener as (...args: any[]) => void);
                     });
                     
@@ -1072,7 +1049,6 @@ const dashboardCommand: Command = {
                       activeMode = ENTRY_SELECTION_MODE;
                     }
                     updateDisplay();
-                    screen.render(); // Force a render to refresh the display
                   });
                   
                   // Focus the success box to capture keyboard input
@@ -1106,7 +1082,6 @@ const dashboardCommand: Command = {
                     // Stay in selection mode
                     activeMode = ENTRY_SELECTION_MODE;
                     updateDisplay();
-                    screen.render(); // Force a render to refresh the display
                   }
                 );
               }
@@ -1115,13 +1090,8 @@ const dashboardCommand: Command = {
               activeMode = ENTRY_SELECTION_MODE;
               selectedEntryIndex = currentSelectedIndex;
               updateDisplay();
-              screen.render(); // Force a render to refresh the display
             }
           });
-          
-          // Force focus on the confirmation box
-          confirmBox.focus();
-          screen.render();
         }
       });
 
@@ -1313,7 +1283,11 @@ const dashboardCommand: Command = {
               }
             });
             
-            successBox.display(isEditingExistingEntry ? 'Entry updated successfully!' : 'Entry added successfully!', 3, () => {
+            const successMessage = isEditingExistingEntry 
+              ? 'Entry updated successfully! Edit timestamp has been recorded.' 
+              : 'New entry added successfully!';
+              
+            successBox.display(successMessage, 3, () => {
               // This will only run if the timeout expires without a key press
               // After the message is closed, restore keyboard handlers
               screen.removeAllListeners('keypress');
