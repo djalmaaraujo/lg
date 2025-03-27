@@ -92,7 +92,7 @@ function generateCalendar(entries: LogEntry[]): string {
     const hasEntries = Object.keys(grouped).some((date) => date.includes(dateStr));
 
     if (hasEntries) {
-      line += '{bold}' + day.toString().padStart(2, ' ') + '{/bold} ';
+      line += '{bold}{green-fg}' + day.toString().padStart(2, ' ') + '{/green-fg}{/bold} ';
     } else {
       line += day.toString().padStart(2, ' ') + ' ';
     }
@@ -108,7 +108,7 @@ function generateCalendar(entries: LogEntry[]): string {
       const hasEntries = Object.keys(grouped).some((date) => date.includes(dateStr));
 
       if (hasEntries) {
-        line += '{bold}' + day.toString().padStart(2, ' ') + '{/bold} ';
+        line += '{bold}{green-fg}' + day.toString().padStart(2, ' ') + '{/green-fg}{/bold} ';
       } else {
         line += day.toString().padStart(2, ' ') + ' ';
       }
@@ -277,7 +277,38 @@ const dashboardCommand: Command = {
             hour: '2-digit',
             minute: '2-digit',
           });
-          entriesContent += `  [${time}] ${entry.content}\n`;
+          let entryLine = `  [${time}] ${entry.content}`;
+          
+          // Add edited indicator if the entry has been updated
+          if (entry.updated_at) {
+            const updatedDate = new Date(entry.updated_at);
+            const createdDate = new Date(entry.timestamp);
+            
+            const updatedTime = updatedDate.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            
+            // Check if the update was on a different day than creation
+            const isSameDay = 
+              updatedDate.getFullYear() === createdDate.getFullYear() &&
+              updatedDate.getMonth() === createdDate.getMonth() &&
+              updatedDate.getDate() === createdDate.getDate();
+            
+            if (isSameDay) {
+              entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
+            } else {
+              // Include the date in the edit indicator
+              const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              });
+              entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
+            }
+          }
+          
+          entriesContent += entryLine + '\n';
         });
         entriesContent += '\n';
       });
@@ -357,7 +388,7 @@ const dashboardCommand: Command = {
       // Create a help text
       blessed.text({
         parent: quickEntryBox,
-        content: 'Press ENTER to edit, ESC to exit edit mode, Ctrl+S to save',
+        content: 'Press ENTER to edit, ESC to exit edit mode, Ctrl+S to save, s to select an entry, d/delete to delete',
         top: 3,
         left: 0,
       });
@@ -370,7 +401,7 @@ const dashboardCommand: Command = {
         width: '100%',
         height: 3,
         content:
-          '{center}Press q to quit, TAB/e/i to navigate, ENTER to edit, arrow keys to scroll{/center}',
+          '{center}Press q to quit, TAB/e/i/s to navigate, ENTER to edit, d/delete to delete, arrow keys to scroll/select{/center}',
         tags: true,
         border: {
           type: 'line',
@@ -388,11 +419,33 @@ const dashboardCommand: Command = {
       const ENTRIES_VIEW = 0;
       const INPUT_VIEW = 1;
       const EDITING_MODE = 2;
+      const ENTRY_SELECTION_MODE = 3;
       let activeMode = ENTRIES_VIEW;
 
       // Track input state
       let currentInput = '';
       let inputCursor = 0;
+      
+      // Track whether we're editing an existing entry or creating a new one
+      let isEditingExistingEntry = false;
+      let editingEntryIndex = -1;
+
+      // Track entry selection
+      let selectedEntryIndex = 0;
+      let flatEntries: { entry: LogEntry; dateStr: string }[] = [];
+
+      // Flatten entries for selection
+      const flattenEntries = () => {
+        flatEntries = [];
+        Object.keys(groupedEntries).forEach((dateStr) => {
+          groupedEntries[dateStr].forEach((entry) => {
+            flatEntries.push({ entry, dateStr });
+          });
+        });
+      };
+
+      // Initial flattening
+      flattenEntries();
 
       // Function to update the display based on active mode
       const updateDisplay = () => {
@@ -400,6 +453,55 @@ const dashboardCommand: Command = {
         entriesBox.setLabel(' Recent Entries ');
         tagsBox.setLabel(' Tags ');
         quickEntryBox.setLabel(' Quick Entry ');
+
+        // Reset the entries display when not in selection mode
+        if (activeMode !== ENTRY_SELECTION_MODE) {
+          // Display entries without selection highlighting
+          let entriesContent = '\n';
+          Object.keys(groupedEntries).forEach((date) => {
+            entriesContent += `  ► ${date}\n\n`;
+            groupedEntries[date].forEach((entry) => {
+              const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+              let entryLine = `  [${time}] ${entry.content}`;
+              
+              // Add edited indicator if the entry has been updated
+              if (entry.updated_at) {
+                const updatedDate = new Date(entry.updated_at);
+                const createdDate = new Date(entry.timestamp);
+                
+                const updatedTime = updatedDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                
+                // Check if the update was on a different day than creation
+                const isSameDay = 
+                  updatedDate.getFullYear() === createdDate.getFullYear() &&
+                  updatedDate.getMonth() === createdDate.getMonth() &&
+                  updatedDate.getDate() === createdDate.getDate();
+                
+                if (isSameDay) {
+                  entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
+                } else {
+                  // Include the date in the edit indicator
+                  const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  });
+                  entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
+                }
+              }
+              
+              entriesContent += entryLine + '\n';
+            });
+            entriesContent += '\n';
+          });
+          entriesBox.setContent(entriesContent || '\n  No entries found.');
+        }
 
         if (activeMode === ENTRIES_VIEW) {
           entriesBox.setLabel(' \u001b[32m[ACTIVE] Recent Entries\u001b[0m ');
@@ -419,6 +521,62 @@ const dashboardCommand: Command = {
 
           inputBox.setContent(beforeCursor + '{inverse}' + atCursor + '{/inverse}' + afterCursor);
           // Don't focus anything in editing mode
+        } else if (activeMode === ENTRY_SELECTION_MODE) {
+          entriesBox.setLabel(' \u001b[32m[SELECT] Recent Entries\u001b[0m ');
+          
+          // Update entries content with selection highlight
+          let entriesContent = '\n';
+          Object.keys(groupedEntries).forEach((date) => {
+            entriesContent += `  ► ${date}\n\n`;
+            groupedEntries[date].forEach((entry) => {
+              const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+              let entryLine = `  [${time}] ${entry.content}`;
+              
+              // Add edited indicator if the entry has been updated
+              if (entry.updated_at) {
+                const updatedDate = new Date(entry.updated_at);
+                const createdDate = new Date(entry.timestamp);
+                
+                const updatedTime = updatedDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                
+                // Check if the update was on a different day than creation
+                const isSameDay = 
+                  updatedDate.getFullYear() === createdDate.getFullYear() &&
+                  updatedDate.getMonth() === createdDate.getMonth() &&
+                  updatedDate.getDate() === createdDate.getDate();
+                
+                if (isSameDay) {
+                  entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
+                } else {
+                  // Include the date in the edit indicator
+                  const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  });
+                  entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
+                }
+              }
+              
+              if (flatEntries.findIndex((e) => e.entry.timestamp === entry.timestamp) === selectedEntryIndex) {
+                // Create a clean version of the line without the leading spaces for highlighting
+                const cleanLine = entryLine.trim();
+                entriesContent += `  {inverse}${cleanLine}{/inverse}\n`;
+              } else {
+                entriesContent += entryLine + '\n';
+              }
+            });
+            entriesContent += '\n';
+          });
+          
+          entriesBox.setContent(entriesContent);
+          entriesBox.focus();
         }
 
         screen.render();
@@ -436,21 +594,64 @@ const dashboardCommand: Command = {
       screen.key('i', () => {
         if (activeMode !== EDITING_MODE) {
           activeMode = INPUT_VIEW;
+          currentInput = '';
+          inputCursor = 0;
+          // Mark that we're creating a new entry
+          isEditingExistingEntry = false;
+          editingEntryIndex = -1;
+          updateDisplay();
+        }
+      });
+
+      // Direct key for entry selection mode
+      screen.key('s', () => {
+        if (activeMode !== EDITING_MODE && flatEntries.length > 0) {
+          activeMode = ENTRY_SELECTION_MODE;
+          selectedEntryIndex = 0;
           updateDisplay();
         }
       });
 
       // Handle escape and q to exit
       screen.key(['escape', 'q', 'C-c'], (_, key) => {
-        // If in editing mode, exit to input view
+        // If in editing mode, exit to input view or selection mode depending on context
         if (activeMode === EDITING_MODE && key.name === 'escape') {
-          activeMode = INPUT_VIEW;
+          if (isEditingExistingEntry) {
+            // If editing an existing entry, return to selection mode
+            activeMode = ENTRY_SELECTION_MODE;
+          } else {
+            // If creating a new entry, return to input view
+            activeMode = INPUT_VIEW;
+            // Clear the input when exiting edit mode without saving
+            currentInput = '';
+            inputCursor = 0;
+          }
+          updateDisplay();
+          return;
+        }
+        
+        // If in editing mode and 'q' is pressed, treat it as a regular character input
+        if (activeMode === EDITING_MODE && key.name === 'q') {
+          // Add 'q' to the input at cursor position
+          currentInput = 
+            currentInput.substring(0, inputCursor) + 'q' + currentInput.substring(inputCursor);
+          inputCursor++;
           updateDisplay();
           return;
         }
 
         // If in input view, exit to entries view on Escape
         if (activeMode === INPUT_VIEW && key.name === 'escape') {
+          activeMode = ENTRIES_VIEW;
+          // Clear the input when exiting input view
+          currentInput = '';
+          inputCursor = 0;
+          updateDisplay();
+          return;
+        }
+        
+        // If in entry selection mode, exit to entries view
+        if (activeMode === ENTRY_SELECTION_MODE && key.name === 'escape') {
           activeMode = ENTRIES_VIEW;
           updateDisplay();
           return;
@@ -467,16 +668,460 @@ const dashboardCommand: Command = {
         if (activeMode === ENTRIES_VIEW) {
           // From entries view, go to input view
           activeMode = INPUT_VIEW;
+          currentInput = '';
+          inputCursor = 0;
+          // Mark that we're creating a new entry
+          isEditingExistingEntry = false;
+          editingEntryIndex = -1;
           updateDisplay();
         } else if (activeMode === INPUT_VIEW) {
           // From input view, enter editing mode
           activeMode = EDITING_MODE;
+          // Still creating a new entry
+          isEditingExistingEntry = false;
+          editingEntryIndex = -1;
           updateDisplay();
         } else if (activeMode === EDITING_MODE) {
           // In editing mode, Enter adds a newline
           currentInput += '\n';
           inputCursor = currentInput.length;
           updateDisplay();
+        } else if (activeMode === ENTRY_SELECTION_MODE && selectedEntryIndex < flatEntries.length) {
+          // In selection mode, Enter selects the entry for editing
+          const selectedEntry = flatEntries[selectedEntryIndex].entry;
+          currentInput = selectedEntry.content;
+          inputCursor = currentInput.length;
+          // Mark that we're editing an existing entry
+          isEditingExistingEntry = true;
+          editingEntryIndex = entries.findIndex(e => e.timestamp === selectedEntry.timestamp);
+          activeMode = EDITING_MODE;
+          updateDisplay();
+        }
+      });
+
+      // Handle navigation in entry selection mode
+      screen.key(['up', 'down'], (_, key) => {
+        if (activeMode === ENTRY_SELECTION_MODE) {
+          if (key.name === 'up' && selectedEntryIndex > 0) {
+            selectedEntryIndex--;
+          } else if (key.name === 'down' && selectedEntryIndex < flatEntries.length - 1) {
+            selectedEntryIndex++;
+          }
+          updateDisplay();
+        }
+      });
+      
+      // Create a custom question box that properly positions buttons
+      function createCustomConfirmDialog(options: any) {
+        // Define our extended box interface
+        interface CustomBox extends blessed.Widgets.BoxElement {
+          setMessage: (text: string) => void;
+          ask: (text: string, callback: (err: Error | null, result: boolean) => void) => void;
+        }
+        
+        // Create the base box with proper typing
+        const box = blessed.box({
+          ...options,
+          tags: true,
+          // Add more padding for better appearance
+          padding: {
+            top: 2,
+            bottom: 2,
+            left: 3,
+            right: 3
+          }
+        }) as CustomBox;
+        
+        const message = blessed.text({
+          parent: box,
+          top: 0,
+          left: 0,
+          right: 0,
+          height: options.height - 4,
+          content: options.content || '',
+          tags: true,
+          wrap: true
+        });
+        
+        // Create buttons with proper typing
+        const okButton = blessed.button({
+          parent: box,
+          bottom: 1,
+          left: '25%-8',
+          width: 8,
+          height: 1,
+          content: ' {bold}Okay{/bold} ',
+          align: 'center',
+          valign: 'middle',
+          mouse: true,
+          keys: true,
+          padding: {
+            left: 1,
+            right: 1
+          },
+          style: {
+            bg: 'green',
+            focus: {
+              bg: 'brightgreen'
+            },
+            hover: {
+              bg: 'brightgreen'
+            }
+          },
+          tags: true
+        });
+        
+        const cancelButton = blessed.button({
+          parent: box,
+          bottom: 1,
+          left: '75%-10',
+          width: 10,
+          height: 1,
+          content: ' {bold}Cancel{/bold} ',
+          align: 'center',
+          valign: 'middle',
+          mouse: true,
+          keys: true,
+          padding: {
+            left: 1,
+            right: 1
+          },
+          style: {
+            bg: 'red',
+            focus: {
+              bg: 'brightred'
+            },
+            hover: {
+              bg: 'brightred'
+            }
+          },
+          tags: true
+        });
+        
+        // Add the setMessage method to the box
+        box.setMessage = (text: string) => {
+          message.setContent(text);
+        };
+        
+        // Add the ask method to the box
+        box.ask = (text: string, callback: (err: Error | null, result: boolean) => void) => {
+          let answered = false;
+          // Track which button is focused
+          let isOkButtonFocused = true;
+          
+          box.setMessage(text);
+          box.show();
+          
+          const done = (result: boolean) => {
+            if (answered) return;
+            answered = true;
+            box.hide();
+            callback(null, result);
+          };
+          
+          okButton.on('press', () => done(true));
+          cancelButton.on('press', () => done(false));
+          
+          // Handle keyboard navigation between buttons
+          okButton.key(['tab', 'right'], () => {
+            cancelButton.focus();
+            isOkButtonFocused = false;
+          });
+          
+          cancelButton.key(['tab', 'right'], () => {
+            okButton.focus();
+            isOkButtonFocused = true;
+          });
+          
+          okButton.key(['shift-tab', 'left'], () => {
+            cancelButton.focus();
+            isOkButtonFocused = false;
+          });
+          
+          cancelButton.key(['shift-tab', 'left'], () => {
+            okButton.focus();
+            isOkButtonFocused = true;
+          });
+          
+          // Handle escape key
+          box.key('escape', () => done(false));
+          
+          // Handle enter key
+          box.key('enter', () => {
+            if (isOkButtonFocused) {
+              done(true);
+            } else {
+              done(false);
+            }
+          });
+          
+          // Initial focus
+          okButton.focus();
+        };
+        
+        return box;
+      }
+
+      // Handle delete key in entry selection mode
+      screen.key(['delete', 'd'], () => {
+        if (activeMode === ENTRY_SELECTION_MODE && selectedEntryIndex < flatEntries.length) {
+          // Store current selection state
+          const currentSelectedIndex = selectedEntryIndex;
+          
+          // Temporarily disable arrow key handling in entries view
+          // Use a safer approach to disable keypress events
+          const originalHandlers: any = {};
+          const keypressListeners = screen.listeners('keypress');
+          keypressListeners.forEach((listener, index) => {
+            originalHandlers[index] = listener;
+          });
+          screen.removeAllListeners('keypress');
+          
+          // Show confirmation dialog
+          const confirmBox = createCustomConfirmDialog({
+            parent: screen,
+            top: 'center',
+            left: 'center',
+            width: '60%',
+            height: 12,
+            border: {
+              type: 'line',
+            },
+            style: {
+              fg: 'white',
+              border: {
+                fg: 'red',
+              },
+            }
+          });
+          
+          const selectedEntry = flatEntries[selectedEntryIndex].entry;
+          const entryPreview = selectedEntry.content.length > 30 
+            ? selectedEntry.content.substring(0, 30) + '...' 
+            : selectedEntry.content;
+            
+          confirmBox.ask(`Are you sure you want to delete this entry?\n\n"${entryPreview}"`, async (err: Error | null, confirmed: boolean) => {
+            // Restore original keypress handlers
+            screen.removeAllListeners('keypress');
+            Object.values(originalHandlers).forEach(handler => {
+              screen.on('keypress', handler as (...args: any[]) => void);
+            });
+            
+            if (err) return;
+            
+            if (confirmed) {
+              try {
+                // Find the entry in the original entries array
+                const deletedEntryIndex = entries.findIndex(e => e.timestamp === selectedEntry.timestamp);
+                
+                if (deletedEntryIndex !== -1) {
+                  // IMPORTANT: Clear the Quick Entry panel BEFORE deleting the entry
+                  // This prevents the deleted content from appearing in the input box
+                  currentInput = '';
+                  inputCursor = 0;
+                  
+                  // Remove the entry
+                  entries.splice(deletedEntryIndex, 1);
+                  
+                  // Write the updated entries back to the file
+                  await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
+                  
+                  // Sync with GitHub Gist in the background if configured
+                  if (await isGistSyncConfigured()) {
+                    syncWithGistInBackground(entries);
+                    logger.debug('Started background sync with GitHub Gist from dashboard');
+                  }
+                  
+                  // Refresh the entries display
+                  entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                  const updatedGroupedEntries = groupEntriesByDate(entries);
+                  
+                  // Update grouped entries and flatten
+                  Object.keys(groupedEntries).forEach(key => {
+                    delete groupedEntries[key];
+                  });
+                  
+                  Object.keys(updatedGroupedEntries).forEach(key => {
+                    groupedEntries[key] = updatedGroupedEntries[key];
+                  });
+                  
+                  flattenEntries();
+                  
+                  // Adjust selected index if needed
+                  if (selectedEntryIndex >= flatEntries.length && flatEntries.length > 0) {
+                    selectedEntryIndex = flatEntries.length - 1;
+                  }
+                  
+                  // Update the entries display with the latest data
+                  let updatedEntriesContent = '\n';
+                  Object.keys(updatedGroupedEntries).forEach((date) => {
+                    updatedEntriesContent += `  ► ${date}\n\n`;
+                    updatedGroupedEntries[date].forEach((entry) => {
+                      const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                      let entryLine = `  [${time}] ${entry.content}`;
+                      
+                      // Add edited indicator if the entry has been updated
+                      if (entry.updated_at) {
+                        const updatedDate = new Date(entry.updated_at);
+                        const createdDate = new Date(entry.timestamp);
+                        
+                        const updatedTime = updatedDate.toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                        
+                        // Check if the update was on a different day than creation
+                        const isSameDay = 
+                          updatedDate.getFullYear() === createdDate.getFullYear() &&
+                          updatedDate.getMonth() === createdDate.getMonth() &&
+                          updatedDate.getDate() === createdDate.getDate();
+                        
+                        if (isSameDay) {
+                          entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
+                        } else {
+                          // Include the date in the edit indicator
+                          const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                          });
+                          entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
+                        }
+                      }
+                      
+                      if (flatEntries.findIndex((e) => e.entry.timestamp === entry.timestamp) === selectedEntryIndex) {
+                        // Create a clean version of the line without the leading spaces for highlighting
+                        const cleanLine = entryLine.trim();
+                        updatedEntriesContent += `  {inverse}${cleanLine}{/inverse}\n`;
+                      } else {
+                        updatedEntriesContent += entryLine + '\n';
+                      }
+                    });
+                    updatedEntriesContent += '\n';
+                  });
+                  entriesBox.setContent(updatedEntriesContent || '\n  No entries found.');
+                  
+                  // Show success message
+                  const successBox = blessed.message({
+                    parent: screen,
+                    top: 'center',
+                    left: 'center',
+                    width: '50%',
+                    height: 5,
+                    content: 'Entry deleted successfully!',
+                    border: {
+                      type: 'line',
+                    },
+                    style: {
+                      fg: 'green',
+                      border: {
+                        fg: 'green',
+                      },
+                    },
+                    keys: true,
+                    mouse: true,
+                    padding: {
+                      top: 1,
+                      bottom: 1,
+                      left: 2,
+                      right: 2
+                    }
+                  });
+                  
+                  // Temporarily disable keyboard input for other elements
+                  const originalKeypress = screen.listeners('keypress');
+                  screen.removeAllListeners('keypress');
+                  
+                  // Add a single keypress handler that only responds to the success box
+                  screen.on('keypress', () => {
+                    // Close the message box immediately on any key press
+                    successBox.hide();
+                    // After the message is closed, restore keyboard handlers
+                    screen.removeAllListeners('keypress');
+                    originalKeypress.forEach(listener => {
+                      screen.on('keypress', listener as (...args: any[]) => void);
+                    });
+                    
+                    if (flatEntries.length === 0) {
+                      // If no entries left, go back to entries view
+                      activeMode = ENTRIES_VIEW;
+                    } else {
+                      // Stay in selection mode
+                      activeMode = ENTRY_SELECTION_MODE;
+                    }
+                    updateDisplay();
+                    screen.render(); // Force a render to refresh the display
+                  });
+                  
+                  successBox.display('Entry deleted successfully!', 3, () => {
+                    // This will only run if the timeout expires without a key press
+                    // After the message is closed, restore keyboard handlers
+                    screen.removeAllListeners('keypress');
+                    originalKeypress.forEach(listener => {
+                      screen.on('keypress', listener as (...args: any[]) => void);
+                    });
+                    
+                    if (flatEntries.length === 0) {
+                      // If no entries left, go back to entries view
+                      activeMode = ENTRIES_VIEW;
+                    } else {
+                      // Stay in selection mode
+                      activeMode = ENTRY_SELECTION_MODE;
+                    }
+                    updateDisplay();
+                    screen.render(); // Force a render to refresh the display
+                  });
+                  
+                  // Focus the success box to capture keyboard input
+                  successBox.focus();
+                  screen.render();
+                }
+              } catch (error) {
+                // Show error message
+                const errorBox = blessed.message({
+                  parent: screen,
+                  top: 'center',
+                  left: 'center',
+                  width: '50%',
+                  height: 5,
+                  content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                  border: {
+                    type: 'line',
+                  },
+                  style: {
+                    fg: 'red',
+                    border: {
+                      fg: 'red',
+                    },
+                  },
+                });
+                
+                errorBox.display(
+                  `Error: ${error instanceof Error ? error.message : String(error)}`,
+                  3,
+                  () => {
+                    // Stay in selection mode
+                    activeMode = ENTRY_SELECTION_MODE;
+                    updateDisplay();
+                    screen.render(); // Force a render to refresh the display
+                  }
+                );
+              }
+            } else {
+              // User canceled, stay in selection mode
+              activeMode = ENTRY_SELECTION_MODE;
+              selectedEntryIndex = currentSelectedIndex;
+              updateDisplay();
+              screen.render(); // Force a render to refresh the display
+            }
+          });
+          
+          // Force focus on the confirmation box
+          confirmBox.focus();
+          screen.render();
         }
       });
 
@@ -516,13 +1161,20 @@ const dashboardCommand: Command = {
       screen.key('C-s', async () => {
         if ((activeMode === EDITING_MODE || activeMode === INPUT_VIEW) && currentInput.trim()) {
           try {
-            // Add new entry
-            const newEntry: LogEntry = {
-              timestamp: new Date().toISOString(),
-              content: currentInput.trim(),
-            };
-
-            entries.unshift(newEntry);
+            if (isEditingExistingEntry && editingEntryIndex !== -1) {
+              // Update existing entry
+              entries[editingEntryIndex].content = currentInput.trim();
+              entries[editingEntryIndex].updated_at = new Date().toISOString();
+            } else {
+              // Add new entry
+              const newEntry: LogEntry = {
+                timestamp: new Date().toISOString(),
+                content: currentInput.trim(),
+                updated_at: null
+              };
+              entries.unshift(newEntry);
+            }
+            
             await fs.writeFile(STORAGE_FILE, JSON.stringify(entries, null, 2));
 
             // Sync with GitHub Gist in the background if configured
@@ -534,10 +1186,29 @@ const dashboardCommand: Command = {
             // Clear input
             currentInput = '';
             inputCursor = 0;
-
+            
+            // Reset selection state
+            selectedEntryIndex = 0;
+            isEditingExistingEntry = false;
+            editingEntryIndex = -1;
+            
             // Refresh the entries display
-            let updatedEntriesContent = '';
+            entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             const updatedGroupedEntries = groupEntriesByDate(entries);
+            
+            // Update grouped entries and flatten
+            Object.keys(groupedEntries).forEach(key => {
+              delete groupedEntries[key];
+            });
+            
+            Object.keys(updatedGroupedEntries).forEach(key => {
+              groupedEntries[key] = updatedGroupedEntries[key];
+            });
+            
+            flattenEntries();
+            
+            // Update the entries display with the latest data
+            let updatedEntriesContent = '';
             Object.keys(updatedGroupedEntries).forEach((date) => {
               updatedEntriesContent += `  ► ${date}\n\n`;
               updatedGroupedEntries[date].forEach((entry) => {
@@ -545,11 +1216,45 @@ const dashboardCommand: Command = {
                   hour: '2-digit',
                   minute: '2-digit',
                 });
-                updatedEntriesContent += `  [${time}] ${entry.content}\n`;
+                let entryLine = `  [${time}] ${entry.content}`;
+                
+                // Add edited indicator if the entry has been updated
+                if (entry.updated_at) {
+                  const updatedDate = new Date(entry.updated_at);
+                  const createdDate = new Date(entry.timestamp);
+                  
+                  const updatedTime = updatedDate.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                  
+                  // Check if the update was on a different day than creation
+                  const isSameDay = 
+                    updatedDate.getFullYear() === createdDate.getFullYear() &&
+                    updatedDate.getMonth() === createdDate.getMonth() &&
+                    updatedDate.getDate() === createdDate.getDate();
+                  
+                  if (isSameDay) {
+                    entryLine += ` {yellow-fg}(edited at ${updatedTime}){/yellow-fg}`;
+                  } else {
+                    // Include the date in the edit indicator
+                    const updatedDateStr = updatedDate.toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                    });
+                    entryLine += ` {yellow-fg}(edited on ${updatedDateStr} at ${updatedTime}){/yellow-fg}`;
+                  }
+                }
+                
+                updatedEntriesContent += entryLine + '\n';
               });
               updatedEntriesContent += '\n';
             });
             entriesBox.setContent(updatedEntriesContent);
+            
+            // Update flattened entries with the updated grouped entries
+            flattenEntries();
 
             // Show success message
             const successBox = blessed.message({
@@ -558,7 +1263,7 @@ const dashboardCommand: Command = {
               left: 'center',
               width: '50%',
               height: 5,
-              content: 'Entry added successfully!',
+              content: isEditingExistingEntry ? 'Entry updated successfully!' : 'Entry added successfully!',
               border: {
                 type: 'line',
               },
@@ -568,12 +1273,57 @@ const dashboardCommand: Command = {
                   fg: 'green',
                 },
               },
+              keys: true,
+              mouse: true,
+              padding: {
+                top: 1,
+                bottom: 1,
+                left: 2,
+                right: 2
+              }
             });
-            successBox.display('Entry added successfully!', 3, () => {
+            
+            // Temporarily disable keyboard input for other elements
+            const originalKeypress = screen.listeners('keypress');
+            screen.removeAllListeners('keypress');
+            
+            // Add a single keypress handler that only responds to the success box
+            // and dismisses the message on any key press
+            screen.on('keypress', () => {
+              // Close the message box immediately on any key press
+              successBox.hide();
+              // After the message is closed, restore keyboard handlers
+              screen.removeAllListeners('keypress');
+              originalKeypress.forEach(listener => {
+                screen.on('keypress', listener as (...args: any[]) => void);
+              });
+              
               // After saving, go back to entries view
               activeMode = ENTRIES_VIEW;
               updateDisplay();
+              
+              // Update the calendar to reflect new entries
+              const calendarBox = screen.children.find(
+                (child) => (child as blessed.Widgets.BoxElement).options.label === ' Calendar '
+              ) as blessed.Widgets.BoxElement;
+              
+              if (calendarBox) {
+                calendarBox.setContent(generateCalendar(entries));
+                screen.render();
+              }
             });
+            
+            successBox.display(isEditingExistingEntry ? 'Entry updated successfully!' : 'Entry added successfully!', 3, () => {
+              // This will only run if the timeout expires without a key press
+              // After the message is closed, restore keyboard handlers
+              screen.removeAllListeners('keypress');
+              originalKeypress.forEach(listener => {
+                screen.on('keypress', listener as (...args: any[]) => void);
+              });
+            });
+            
+            // Focus the success box to capture keyboard input
+            successBox.focus();
           } catch (error) {
             // Show error message
             const errorBox = blessed.message({
@@ -608,7 +1358,16 @@ const dashboardCommand: Command = {
       screen.key('tab', () => {
         if (activeMode !== EDITING_MODE) {
           // Toggle between ENTRIES_VIEW and INPUT_VIEW
-          activeMode = activeMode === ENTRIES_VIEW ? INPUT_VIEW : ENTRIES_VIEW;
+          if (activeMode === ENTRIES_VIEW) {
+            activeMode = INPUT_VIEW;
+            currentInput = '';
+            inputCursor = 0;
+            // Mark that we're creating a new entry
+            isEditingExistingEntry = false;
+            editingEntryIndex = -1;
+          } else {
+            activeMode = ENTRIES_VIEW;
+          }
           updateDisplay();
         }
       });

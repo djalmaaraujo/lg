@@ -24,6 +24,7 @@ async function addLogEntry(content: string, customDate?: string): Promise<void> 
     const newEntry: LogEntry = {
       timestamp: customDate ? new Date(customDate).toISOString() : new Date().toISOString(),
       content,
+      updated_at: null
     };
 
     // Add the new entry
